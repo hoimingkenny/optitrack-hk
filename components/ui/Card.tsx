@@ -1,5 +1,6 @@
 'use client';
 
+import { Box } from '@chakra-ui/react';
 import { ReactNode } from 'react';
 
 interface CardProps {
@@ -8,24 +9,24 @@ interface CardProps {
   padding?: 'none' | 'sm' | 'md' | 'lg';
 }
 
-export default function Card({ children, className = '', padding = 'md' }: CardProps) {
-  const paddings = {
-    none: '',
-    sm: 'p-3',
-    md: 'p-4',
-    lg: 'p-6',
-  };
+const paddingMap = {
+  none: 0,
+  sm: 3,
+  md: 4,
+  lg: 6,
+};
 
+export default function Card({ children, padding = 'md' }: CardProps) {
   return (
-    <div 
-      className={`
-        bg-gray-900 border border-gray-800 rounded-xl
-        ${paddings[padding]}
-        ${className}
-      `}
+    <Box
+      bg="gray.900"
+      borderWidth="1px"
+      borderColor="gray.800"
+      borderRadius="xl"
+      p={paddingMap[padding]}
     >
       {children}
-    </div>
+    </Box>
   );
 }
 
@@ -34,11 +35,11 @@ interface CardHeaderProps {
   className?: string;
 }
 
-export function CardHeader({ children, className = '' }: CardHeaderProps) {
+export function CardHeader({ children }: CardHeaderProps) {
   return (
-    <div className={`border-b border-gray-800 pb-4 mb-4 ${className}`}>
+    <Box borderBottomWidth="1px" borderColor="gray.800" pb={4} mb={4}>
       {children}
-    </div>
+    </Box>
   );
 }
 
@@ -47,11 +48,11 @@ interface CardTitleProps {
   className?: string;
 }
 
-export function CardTitle({ children, className = '' }: CardTitleProps) {
+export function CardTitle({ children }: CardTitleProps) {
   return (
-    <h3 className={`text-lg font-semibold text-gray-100 ${className}`}>
+    <Box as="h3" fontSize="lg" fontWeight="semibold" color="gray.100">
       {children}
-    </h3>
+    </Box>
   );
 }
 
@@ -60,8 +61,8 @@ interface CardContentProps {
   className?: string;
 }
 
-export function CardContent({ children, className = '' }: CardContentProps) {
-  return <div className={className}>{children}</div>;
+export function CardContent({ children }: CardContentProps) {
+  return <Box>{children}</Box>;
 }
 
 interface CardFooterProps {
@@ -69,10 +70,10 @@ interface CardFooterProps {
   className?: string;
 }
 
-export function CardFooter({ children, className = '' }: CardFooterProps) {
+export function CardFooter({ children }: CardFooterProps) {
   return (
-    <div className={`border-t border-gray-800 pt-4 mt-4 ${className}`}>
+    <Box borderTopWidth="1px" borderColor="gray.800" pt={4} mt={4}>
       {children}
-    </div>
+    </Box>
   );
 }

@@ -1,51 +1,58 @@
 'use client';
 
-import { SelectHTMLAttributes, forwardRef } from 'react';
+import { Box, Field } from '@chakra-ui/react';
+import { forwardRef } from 'react';
 
 interface SelectOption {
   value: string;
   label: string;
 }
 
-interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
+interface SelectProps {
   label?: string;
   error?: string;
   options: SelectOption[];
   placeholder?: string;
+  id?: string;
+  required?: boolean;
+  value?: string;
+  onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  disabled?: boolean;
+  name?: string;
 }
 
 const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ className = '', label, error, options, placeholder, id, ...props }, ref) => {
+  ({ label, error, options, placeholder, id, required, value, onChange, disabled, name }, ref) => {
     const selectId = id || label?.toLowerCase().replace(/\s/g, '-');
-    
+
     return (
-      <div className="w-full">
+      <Field.Root invalid={!!error} required={required}>
         {label && (
-          <label 
-            htmlFor={selectId} 
-            className="block text-sm font-medium text-gray-300 mb-1.5"
-          >
+          <Field.Label htmlFor={selectId} fontSize="sm" fontWeight="medium" color="gray.300" mb={1.5}>
             {label}
-            {props.required && <span className="text-red-400 ml-1">*</span>}
-          </label>
+            {required && <Box as="span" color="red.400" ml={1}>*</Box>}
+          </Field.Label>
         )}
         <select
           ref={ref}
           id={selectId}
-          className={`
-            w-full px-3 py-2 rounded-lg
-            bg-gray-800 border text-gray-100
-            focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-offset-gray-900
-            disabled:opacity-50 disabled:cursor-not-allowed
-            ${error 
-              ? 'border-red-500 focus:ring-red-500' 
-              : 'border-gray-700 focus:ring-blue-500 focus:border-blue-500'
-            }
-            ${className}
-          `}
+          name={name}
+          value={value}
+          onChange={onChange}
+          disabled={disabled}
           aria-invalid={error ? 'true' : 'false'}
           aria-describedby={error ? `${selectId}-error` : undefined}
-          {...props}
+          style={{
+            width: '100%',
+            padding: '8px 12px',
+            borderRadius: '8px',
+            backgroundColor: '#1f2937',
+            border: `1px solid ${error ? '#ef4444' : '#374151'}`,
+            color: '#f3f4f6',
+            outline: 'none',
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            opacity: disabled ? 0.5 : 1,
+          }}
         >
           {placeholder && (
             <option value="" disabled>
@@ -59,11 +66,11 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
           ))}
         </select>
         {error && (
-          <p id={`${selectId}-error`} className="mt-1.5 text-sm text-red-400" role="alert">
+          <Field.ErrorText id={`${selectId}-error`} mt={1.5} fontSize="sm" color="red.400">
             {error}
-          </p>
+          </Field.ErrorText>
         )}
-      </div>
+      </Field.Root>
     );
   }
 );

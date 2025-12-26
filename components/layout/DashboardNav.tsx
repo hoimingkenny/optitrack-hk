@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { Box, Flex, HStack, Text } from '@chakra-ui/react';
 import Button from '@/components/ui/Button';
 
 interface DashboardNavProps {
@@ -17,73 +18,111 @@ export default function DashboardNav({ onSignOut, userEmail }: DashboardNavProps
   ];
 
   return (
-    <nav className="bg-gray-900 border-b border-gray-800 sticky top-0 z-40">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+    <Box
+      as="nav"
+      bg="gray.900"
+      borderBottomWidth="1px"
+      borderColor="gray.800"
+      position="sticky"
+      top={0}
+      zIndex={40}
+    >
+      <Box maxW="7xl" mx="auto" px={{ base: 4, sm: 6, lg: 8 }}>
+        <Flex alignItems="center" justifyContent="space-between" h={16}>
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <span className="text-xl font-bold text-blue-400">📈</span>
-            <span className="text-lg font-semibold text-gray-100">OptiTrack HK</span>
+          <Link href="/">
+            <HStack gap={2}>
+              <Text fontSize="xl" fontWeight="bold" color="blue.400">📈</Text>
+              <Text fontSize="lg" fontWeight="semibold" color="gray.100">OptiTrack HK</Text>
+            </HStack>
           </Link>
 
           {/* Nav Links */}
-          <div className="hidden md:flex items-center gap-1">
+          <HStack gap={1} display={{ base: 'none', md: 'flex' }}>
             {navItems.map((item) => {
               const isActive = pathname === item.href;
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`
-                    flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors
-                    ${isActive 
-                      ? 'bg-blue-600/20 text-blue-400' 
-                      : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'}
-                  `}
-                >
-                  <item.icon className="w-4 h-4" />
-                  {item.label}
+                <Link key={item.href} href={item.href}>
+                  <HStack
+                    gap={2}
+                    px={4}
+                    py={2}
+                    borderRadius="lg"
+                    fontSize="sm"
+                    fontWeight="medium"
+                    transition="colors"
+                    bg={isActive ? 'blue.600/20' : 'transparent'}
+                    color={isActive ? 'blue.400' : 'gray.400'}
+                    _hover={{
+                      color: isActive ? 'blue.400' : 'gray.200',
+                      bg: isActive ? 'blue.600/20' : 'gray.800',
+                    }}
+                  >
+                    <item.icon className="w-4 h-4" />
+                    <Text>{item.label}</Text>
+                  </HStack>
                 </Link>
               );
             })}
-          </div>
+          </HStack>
 
           {/* User Menu */}
-          <div className="flex items-center gap-4">
+          <HStack gap={4}>
             {userEmail && (
-              <span className="hidden sm:block text-sm text-gray-400 truncate max-w-[150px]">
+              <Text
+                display={{ base: 'none', sm: 'block' }}
+                fontSize="sm"
+                color="gray.400"
+                truncate
+                maxW="150px"
+              >
                 {userEmail}
-              </span>
+              </Text>
             )}
             <Button variant="ghost" size="sm" onClick={onSignOut}>
               Sign Out
             </Button>
-          </div>
-        </div>
-      </div>
+          </HStack>
+        </Flex>
+      </Box>
 
       {/* Mobile Nav */}
-      <div className="md:hidden border-t border-gray-800 px-2 py-2 flex gap-1 overflow-x-auto">
+      <Flex
+        display={{ base: 'flex', md: 'none' }}
+        borderTopWidth="1px"
+        borderColor="gray.800"
+        px={2}
+        py={2}
+        gap={1}
+        overflowX="auto"
+      >
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`
-                flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap
-                ${isActive 
-                  ? 'bg-blue-600/20 text-blue-400' 
-                  : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800'}
-              `}
-            >
-              <item.icon className="w-4 h-4" />
-              {item.label}
+            <Link key={item.href} href={item.href}>
+              <HStack
+                gap={2}
+                px={3}
+                py={2}
+                borderRadius="lg"
+                fontSize="sm"
+                fontWeight="medium"
+                whiteSpace="nowrap"
+                bg={isActive ? 'blue.600/20' : 'transparent'}
+                color={isActive ? 'blue.400' : 'gray.400'}
+                _hover={{
+                  color: isActive ? 'blue.400' : 'gray.200',
+                  bg: isActive ? 'blue.600/20' : 'gray.800',
+                }}
+              >
+                <item.icon className="w-4 h-4" />
+                <Text>{item.label}</Text>
+              </HStack>
             </Link>
           );
         })}
-      </div>
-    </nav>
+      </Flex>
+    </Box>
   );
 }
 

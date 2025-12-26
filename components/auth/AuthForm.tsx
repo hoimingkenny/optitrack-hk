@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
+import { Box, VStack, Text } from '@chakra-ui/react';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Card, { CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
@@ -48,74 +49,102 @@ export default function AuthForm({
   };
 
   return (
-    <Card padding="lg" className="w-full max-w-md mx-auto">
-      <CardHeader>
-        <CardTitle className="text-center text-2xl">
-          {mode === 'login' ? 'Sign In' : 'Create Account'}
-        </CardTitle>
-        <p className="text-center text-gray-400 text-sm mt-2">
-          {mode === 'login' 
-            ? 'Welcome back to OptiTrack HK' 
-            : 'Start tracking your HK options trades'}
-        </p>
-      </CardHeader>
+    <Box w="full" maxW="md" mx="auto">
+      <Card padding="lg">
+        <CardHeader>
+          <CardTitle>
+            <Text textAlign="center" fontSize="2xl">
+              {mode === 'login' ? 'Sign In' : 'Create Account'}
+            </Text>
+          </CardTitle>
+          <Text textAlign="center" color="gray.400" fontSize="sm" mt={2}>
+            {mode === 'login' 
+              ? 'Welcome back to OptiTrack HK' 
+              : 'Start tracking your HK options trades'}
+          </Text>
+        </CardHeader>
 
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {(error || validationError) && (
-            <div className="p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-400 text-sm">
-              {error || validationError}
-            </div>
-          )}
+        <CardContent>
+          <form onSubmit={handleSubmit}>
+            <VStack gap={4}>
+              {(error || validationError) && (
+                <Box
+                  w="full"
+                  p={3}
+                  bg="red.900/30"
+                  borderWidth="1px"
+                  borderColor="red.700"
+                  borderRadius="lg"
+                  color="red.400"
+                  fontSize="sm"
+                >
+                  {error || validationError}
+                </Box>
+              )}
 
-          <Input
-            label="Email"
-            type="email"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoComplete="email"
-          />
+              <Input
+                label="Email"
+                type="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+              />
 
-          <Input
-            label="Password"
-            type="password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-          />
+              <Input
+                label="Password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+              />
 
-          {mode === 'signup' && (
-            <Input
-              label="Confirm Password"
-              type="password"
-              placeholder="••••••••"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              autoComplete="new-password"
-            />
-          )}
+              {mode === 'signup' && (
+                <Input
+                  label="Confirm Password"
+                  type="password"
+                  placeholder="••••••••"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  autoComplete="new-password"
+                />
+              )}
 
-          <Button type="submit" className="w-full" size="lg" isLoading={isLoading}>
-            {mode === 'login' ? 'Sign In' : 'Create Account'}
-          </Button>
+              <Box w="full">
+                <Button type="submit" size="lg" isLoading={isLoading}>
+                  <Box w="full">{mode === 'login' ? 'Sign In' : 'Create Account'}</Box>
+                </Button>
+              </Box>
 
-          <p className="text-center text-sm text-gray-400">
-            {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
-            <button
-              type="button"
-              onClick={onToggleMode}
-              className="text-blue-400 hover:text-blue-300 font-medium"
-            >
-              {mode === 'login' ? 'Sign up' : 'Sign in'}
-            </button>
-          </p>
-        </form>
-      </CardContent>
-    </Card>
+              <Text textAlign="center" fontSize="sm" color="gray.400">
+                {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+                <button
+                  type="button"
+                  onClick={onToggleMode}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#60a5fa',
+                    fontWeight: 500,
+                    fontSize: 'inherit',
+                    fontFamily: 'inherit',
+                    padding: 0,
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = '#93c5fd'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = '#60a5fa'}
+                >
+                  {mode === 'login' ? 'Sign up' : 'Sign in'}
+                </button>
+              </Text>
+            </VStack>
+          </form>
+        </CardContent>
+      </Card>
+    </Box>
   );
 }

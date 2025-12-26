@@ -1,7 +1,16 @@
 'use client';
 
-import { ReactNode, useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import {
+  DialogRoot,
+  DialogContent,
+  DialogHeader,
+  DialogBody,
+  DialogFooter,
+  DialogTitle,
+  DialogCloseTrigger,
+  DialogBackdrop,
+} from '@chakra-ui/react';
+import { ReactNode } from 'react';
 import Button from './Button';
 
 interface ModalProps {
@@ -13,90 +22,71 @@ interface ModalProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
+const sizeMap = {
+  sm: 'sm',
+  md: 'md',
+  lg: 'lg',
+  xl: 'xl',
+} as const;
+
 export default function Modal({ isOpen, onClose, title, children, footer, size = 'md' }: ModalProps) {
-  const overlayRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
-
-  useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose]);
-
-  if (!isOpen) return null;
-
-  const sizes = {
-    sm: 'max-w-sm',
-    md: 'max-w-md',
-    lg: 'max-w-lg',
-    xl: 'max-w-xl',
-  };
-
-  const handleOverlayClick = (e: React.MouseEvent) => {
-    if (e.target === overlayRef.current) {
-      onClose();
-    }
-  };
-
-  return createPortal(
-    <div 
-      ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
-      onClick={handleOverlayClick}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="modal-title"
+  return (
+    <DialogRoot
+      open={isOpen}
+      onOpenChange={(details) => !details.open && onClose()}
+      size={sizeMap[size]}
+      placement="center"
+      motionPreset="slide-in-bottom"
     >
-      <div 
-        className={`
-          w-full ${sizes[size]} bg-gray-900 border border-gray-800 rounded-xl shadow-2xl
-          animate-modal-in
-        `}
+      <DialogBackdrop bg="blackAlpha.700" backdropFilter="blur(4px)" />
+      <DialogContent
+        bg="gray.900"
+        borderWidth="1px"
+        borderColor="gray.800"
+        borderRadius="xl"
+        shadow="2xl"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-800">
-          <h2 id="modal-title" className="text-lg font-semibold text-gray-100">
+        <DialogHeader
+          display="flex"
+          alignItems="center"
+          justifyContent="space-between"
+          p={4}
+          borderBottomWidth="1px"
+          borderColor="gray.800"
+        >
+          <DialogTitle fontSize="lg" fontWeight="semibold" color="gray.100">
             {title}
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-1 text-gray-400 hover:text-gray-200 transition-colors rounded-lg hover:bg-gray-800"
-            aria-label="Close modal"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+          </DialogTitle>
+          <DialogCloseTrigger
+            position="relative"
+            top="0"
+            right="0"
+            p={1}
+            color="gray.400"
+            _hover={{ color: 'gray.200', bg: 'gray.800' }}
+            borderRadius="lg"
+          />
+        </DialogHeader>
 
-        {/* Content */}
-        <div className="p-4 max-h-[70vh] overflow-y-auto">
+        <DialogBody p={4} maxH="70vh" overflowY="auto">
           {children}
-        </div>
+        </DialogBody>
 
-        {/* Footer */}
         {footer && (
-          <div className="flex items-center justify-end gap-3 p-4 border-t border-gray-800">
+          <DialogFooter
+            display="flex"
+            alignItems="center"
+            justifyContent="flex-end"
+            gap={3}
+            p={4}
+            borderTopWidth="1px"
+            borderColor="gray.800"
+          >
             {footer}
-          </div>
+          </DialogFooter>
         )}
-      </div>
-    </div>,
-    document.body
+      </DialogContent>
+    </DialogRoot>
   );
 }
 
@@ -135,8 +125,8 @@ export function ConfirmModal({
           <Button variant="secondary" onClick={onClose} disabled={isLoading}>
             {cancelText}
           </Button>
-          <Button 
-            variant={variant === 'danger' ? 'danger' : 'primary'} 
+          <Button
+            variant={variant === 'danger' ? 'danger' : 'primary'}
             onClick={onConfirm}
             isLoading={isLoading}
           >
@@ -145,7 +135,7 @@ export function ConfirmModal({
         </>
       }
     >
-      <p className="text-gray-300">{message}</p>
+      <p style={{ color: '#d1d5db' }}>{message}</p>
     </Modal>
   );
 }

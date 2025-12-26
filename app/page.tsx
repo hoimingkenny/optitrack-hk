@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { Box, Container, Flex, Text, VStack, Center, Spinner } from '@chakra-ui/react';
 import { User } from '@supabase/supabase-js';
 import { Trade, TradeFilters, NewTradeInput, CloseTradeInput } from '@/utils/types/trades';
 import { 
@@ -24,7 +25,7 @@ import TradeFiltersComponent, { applyTradeFilters } from '@/components/trades/Tr
 import CloseTradeModal from '@/components/trades/CloseTradeModal';
 import PNLSummary from '@/components/trades/PNLSummary';
 import Button from '@/components/ui/Button';
-import { ToastContainer, toast } from '@/components/ui/Toast';
+import { toast } from '@/components/ui/Toast';
 import { ConfirmModal } from '@/components/ui/Modal';
 
 export default function Home() {
@@ -128,8 +129,9 @@ export default function Home() {
         await signUp(email, password);
         toast.success('Account created! Please check your email to verify.');
       }
-    } catch (error: any) {
-      setAuthError(error.message || 'Authentication failed');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
+      setAuthError(errorMessage);
     } finally {
       setAuthLoading(false);
     }
@@ -140,7 +142,7 @@ export default function Home() {
       await signOut();
       setTrades([]);
       toast.info('Signed out successfully');
-    } catch (error) {
+    } catch {
       toast.error('Failed to sign out');
     }
   };
@@ -155,8 +157,9 @@ export default function Home() {
       toast.success('Trade opened successfully!');
       setShowNewTradeForm(false);
       await loadTrades();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to create trade');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create trade';
+      toast.error(errorMessage);
     } finally {
       setFormLoading(false);
     }
@@ -171,8 +174,9 @@ export default function Home() {
       toast.success('Position closed successfully!');
       setCloseModalTrade(null);
       await loadTrades();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to close trade');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to close trade';
+      toast.error(errorMessage);
     } finally {
       setCloseModalLoading(false);
     }
@@ -187,8 +191,9 @@ export default function Home() {
       toast.success('Trade deleted');
       setDeleteModalTrade(null);
       await loadTrades();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to delete trade');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete trade';
+      toast.error(errorMessage);
     } finally {
       setDeleteLoading(false);
     }
@@ -201,25 +206,24 @@ export default function Home() {
   // Loading state
   if (initialLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-400">Loading...</p>
-        </div>
-      </div>
+      <Center minH="100vh">
+        <VStack>
+          <Spinner size="xl" color="blue.500" borderWidth="4px" />
+          <Text color="gray.400">Loading...</Text>
+        </VStack>
+      </Center>
     );
   }
 
   // Auth screen
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <ToastContainer />
-        <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-100 mb-2">📈 OptiTrack HK</h1>
-            <p className="text-gray-400">Hong Kong Stock Options Tracker</p>
-          </div>
+      <Center minH="100vh" p={4}>
+        <Box w="full" maxW="md">
+          <VStack textAlign="center" mb={8}>
+            <Text fontSize="3xl" fontWeight="bold" color="gray.100">📈 OptiTrack HK</Text>
+            <Text color="gray.400">Hong Kong Stock Options Tracker</Text>
+          </VStack>
           <AuthForm
             mode={authMode}
             onSubmit={handleAuth}
@@ -227,86 +231,89 @@ export default function Home() {
             isLoading={authLoading}
             error={authError}
           />
-        </div>
-      </div>
+        </Box>
+      </Center>
     );
   }
 
   // Dashboard
   return (
-    <div className="min-h-screen">
-      <ToastContainer />
+    <Box minH="100vh">
       <DashboardNav onSignOut={handleSignOut} userEmail={user.email} />
       
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <Container maxW="7xl" px={{ base: 4, sm: 6, lg: 8 }} py={6}>
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-100">Dashboard</h1>
-            <p className="text-gray-400 text-sm">
+        <Flex alignItems="center" justifyContent="space-between" mb={6}>
+          <Box>
+            <Text fontSize="2xl" fontWeight="bold" color="gray.100">Dashboard</Text>
+            <Text color="gray.400" fontSize="sm">
               {new Date().toLocaleDateString('en-HK', { 
                 weekday: 'long', 
                 year: 'numeric', 
                 month: 'long', 
                 day: 'numeric' 
               })}
-            </p>
-          </div>
+            </Text>
+          </Box>
           <Button onClick={() => setShowNewTradeForm(true)}>
             + New Trade
           </Button>
-        </div>
+        </Flex>
 
         {/* New Trade Form */}
         {showNewTradeForm && (
-          <div className="mb-6">
+          <Box mb={6}>
             <TradeForm
               onSubmit={handleCreateTrade}
               onCancel={() => setShowNewTradeForm(false)}
               isLoading={formLoading}
             />
-          </div>
+          </Box>
         )}
 
         {/* PNL Summary */}
         {trades.length > 0 && (
-          <div className="mb-6">
+          <Box mb={6}>
             <PNLSummary trades={trades} />
-          </div>
+          </Box>
         )}
 
         {/* Filters */}
         {trades.length > 0 && (
-          <div className="mb-6">
+          <Box mb={6}>
             <TradeFiltersComponent
               filters={filters}
               onFilterChange={setFilters}
               stockSymbols={stockSymbols}
             />
-          </div>
+          </Box>
         )}
 
         {/* Trade List */}
         {tradesLoading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-gray-400">Loading trades...</p>
-          </div>
+          <Center py={12}>
+            <VStack gap={2}>
+              <Spinner size="lg" color="blue.500" borderWidth="4px" />
+              <Text color="gray.400">Loading trades...</Text>
+            </VStack>
+          </Center>
         ) : filteredTrades.length === 0 ? (
-          <div className="text-center py-12 bg-gray-900 rounded-xl border border-gray-800">
-            <p className="text-gray-400 mb-4">
-              {trades.length === 0 
-                ? "No trades yet. Create your first trade to get started!" 
-                : "No trades match your filters."}
-            </p>
-            {trades.length === 0 && (
-              <Button onClick={() => setShowNewTradeForm(true)}>
-                Create First Trade
-              </Button>
-            )}
-          </div>
+          <Center py={12} bg="gray.900" borderRadius="xl" borderWidth="1px" borderColor="gray.800">
+            <VStack gap={4}>
+              <Text color="gray.400" mb={0}>
+                {trades.length === 0 
+                  ? "No trades yet. Create your first trade to get started!" 
+                  : "No trades match your filters."}
+              </Text>
+              {trades.length === 0 && (
+                <Button onClick={() => setShowNewTradeForm(true)}>
+                  Create First Trade
+                </Button>
+              )}
+            </VStack>
+          </Center>
         ) : (
-          <div className="grid gap-4">
+          <VStack gap={4} align="stretch">
             {filteredTrades.map(trade => (
               <TradeCard
                 key={trade.id}
@@ -315,9 +322,9 @@ export default function Home() {
                 onDelete={(t) => setDeleteModalTrade(t)}
               />
             ))}
-          </div>
+          </VStack>
         )}
-      </main>
+      </Container>
 
       {/* Close Trade Modal */}
       {closeModalTrade && (
@@ -341,6 +348,6 @@ export default function Home() {
         variant="danger"
         isLoading={deleteLoading}
       />
-    </div>
+    </Box>
   );
 }

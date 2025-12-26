@@ -1,7 +1,8 @@
 'use client';
 
+import { SimpleGrid, Box, Text } from '@chakra-ui/react';
 import { Trade, TradeSummary, StockSummary } from '@/utils/types/trades';
-import { getFinalPNL, formatHKD, formatPNL, getPNLColorClass, calculatePortfolioPNL } from '@/utils/helpers/pnl-calculator';
+import { getFinalPNL, formatPNL, getPNLColorClass, calculatePortfolioPNL } from '@/utils/helpers/pnl-calculator';
 import { calculateHoldDays } from '@/utils/helpers/status-calculator';
 import Card from '@/components/ui/Card';
 
@@ -13,7 +14,7 @@ export default function PNLSummary({ trades }: PNLSummaryProps) {
   const summary = calculateTradeSummary(trades);
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <SimpleGrid columns={{ base: 2, md: 4 }} gap={4}>
       <SummaryCard
         label="Total PNL"
         value={formatPNL(summary.totalPNL)}
@@ -36,7 +37,7 @@ export default function PNLSummary({ trades }: PNLSummaryProps) {
         valueClass="text-gray-200"
         subtitle="days"
       />
-    </div>
+    </SimpleGrid>
   );
 }
 
@@ -50,9 +51,13 @@ interface SummaryCardProps {
 function SummaryCard({ label, value, valueClass = 'text-gray-100', subtitle }: SummaryCardProps) {
   return (
     <Card padding="md">
-      <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
-      <p className={`text-2xl font-bold mt-1 ${valueClass}`}>{value}</p>
-      {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
+      <Text fontSize="xs" fontWeight="medium" color="gray.500" textTransform="uppercase" letterSpacing="wide">
+        {label}
+      </Text>
+      <Box className={valueClass}>
+        <Text fontSize="2xl" fontWeight="bold" mt={1}>{value}</Text>
+      </Box>
+      {subtitle && <Text fontSize="xs" color="gray.500" mt={0.5}>{subtitle}</Text>}
     </Card>
   );
 }

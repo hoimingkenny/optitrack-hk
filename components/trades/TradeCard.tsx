@@ -1,5 +1,6 @@
 'use client';
 
+import { Box, Flex, SimpleGrid, HStack, Text } from '@chakra-ui/react';
 import { Trade } from '@/utils/types/trades';
 import { getFinalPNL, formatHKD, formatPNL, getPNLColorClass } from '@/utils/helpers/pnl-calculator';
 import { formatDateForDisplay, getRelativeTimeString } from '@/utils/helpers/date-helpers';
@@ -22,67 +23,67 @@ export default function TradeCard({ trade, onClose, onView, onDelete }: TradeCar
   const isOpen = trade.status === 'Open';
 
   return (
-    <Card className="hover:border-gray-700 transition-colors">
+    <Card>
       {/* Header */}
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <span className="text-lg font-semibold text-gray-100">{trade.stock_symbol}</span>
+      <Flex alignItems="flex-start" justifyContent="space-between" mb={3}>
+        <HStack gap={2}>
+          <Text fontSize="lg" fontWeight="semibold" color="gray.100">{trade.stock_symbol}</Text>
           <DirectionBadge direction={trade.direction} />
           <StatusBadge status={trade.status} />
-        </div>
+        </HStack>
         {trade.status !== 'Open' && pnl.netPNL !== 0 && (
-          <span className={`text-lg font-bold ${getPNLColorClass(pnl.netPNL)}`}>
+          <Text fontSize="lg" fontWeight="bold" className={getPNLColorClass(pnl.netPNL)}>
             {formatPNL(pnl.netPNL)}
-          </span>
+          </Text>
         )}
-      </div>
+      </Flex>
 
       {/* Details Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-4">
-        <div>
-          <span className="text-gray-500 block">Strike</span>
-          <span className="text-gray-200">{formatHKD(trade.strike_price)}</span>
-        </div>
-        <div>
-          <span className="text-gray-500 block">Expiry</span>
-          <span className="text-gray-200">{formatDateForDisplay(trade.expiry_date)}</span>
+      <SimpleGrid columns={{ base: 2, md: 4 }} gap={3} fontSize="sm" mb={4}>
+        <Box>
+          <Text color="gray.500">Strike</Text>
+          <Text color="gray.200">{formatHKD(trade.strike_price)}</Text>
+        </Box>
+        <Box>
+          <Text color="gray.500">Expiry</Text>
+          <Text color="gray.200">{formatDateForDisplay(trade.expiry_date)}</Text>
           {isOpen && (
-            <span className={`text-xs block ${daysToExpiry <= 7 ? 'text-orange-400' : 'text-gray-500'}`}>
+            <Text fontSize="xs" color={daysToExpiry <= 7 ? 'orange.400' : 'gray.500'}>
               {getRelativeTimeString(trade.expiry_date)}
-            </span>
+            </Text>
           )}
-        </div>
-        <div>
-          <span className="text-gray-500 block">Premium</span>
-          <span className="text-gray-200">{formatHKD(trade.premium)}/share</span>
-        </div>
-        <div>
-          <span className="text-gray-500 block">Total</span>
-          <span className="text-green-400">{formatHKD(trade.total_premium)}</span>
-        </div>
-      </div>
+        </Box>
+        <Box>
+          <Text color="gray.500">Premium</Text>
+          <Text color="gray.200">{formatHKD(trade.premium)}/share</Text>
+        </Box>
+        <Box>
+          <Text color="gray.500">Total</Text>
+          <Text color="green.400">{formatHKD(trade.total_premium)}</Text>
+        </Box>
+      </SimpleGrid>
 
       {/* Secondary Info */}
-      <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
-        <span>{trade.contracts} contract{trade.contracts > 1 ? 's' : ''}</span>
-        <span>×</span>
-        <span>{trade.shares_per_contract} shares</span>
+      <HStack gap={4} fontSize="xs" color="gray.500" mb={4}>
+        <Text>{trade.contracts} contract{trade.contracts > 1 ? 's' : ''}</Text>
+        <Text>×</Text>
+        <Text>{trade.shares_per_contract} shares</Text>
         {holdDays > 0 && (
           <>
-            <span>•</span>
-            <span>{holdDays} days held</span>
+            <Text>•</Text>
+            <Text>{holdDays} days held</Text>
           </>
         )}
         {trade.fee > 0 && (
           <>
-            <span>•</span>
-            <span>Fee: {formatHKD(trade.fee)}</span>
+            <Text>•</Text>
+            <Text>Fee: {formatHKD(trade.fee)}</Text>
           </>
         )}
-      </div>
+      </HStack>
 
       {/* Actions */}
-      <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-800">
+      <Flex alignItems="center" justifyContent="flex-end" gap={2} pt={3} borderTopWidth="1px" borderColor="gray.800">
         {onView && (
           <Button size="sm" variant="ghost" onClick={() => onView(trade)}>
             View
@@ -100,7 +101,7 @@ export default function TradeCard({ trade, onClose, onView, onDelete }: TradeCar
             </svg>
           </Button>
         )}
-      </div>
+      </Flex>
     </Card>
   );
 }

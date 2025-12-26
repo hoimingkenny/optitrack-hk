@@ -1,5 +1,6 @@
 'use client';
 
+import { Badge as ChakraBadge } from '@chakra-ui/react';
 import { ReactNode } from 'react';
 
 interface BadgeProps {
@@ -8,26 +9,33 @@ interface BadgeProps {
   className?: string;
 }
 
+const variantStyles = {
+  default: { bg: 'gray.500/20', color: 'gray.400', borderColor: 'gray.500/30' },
+  success: { bg: 'green.500/20', color: 'green.400', borderColor: 'green.500/30' },
+  warning: { bg: 'orange.500/20', color: 'orange.400', borderColor: 'orange.500/30' },
+  danger: { bg: 'red.500/20', color: 'red.400', borderColor: 'red.500/30' },
+  info: { bg: 'blue.500/20', color: 'blue.400', borderColor: 'blue.500/30' },
+  custom: {},
+};
+
 export default function Badge({ children, variant = 'default', className = '' }: BadgeProps) {
-  const variants = {
-    default: 'bg-gray-500/20 text-gray-400 border-gray-500/30',
-    success: 'bg-green-500/20 text-green-400 border-green-500/30',
-    warning: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-    danger: 'bg-red-500/20 text-red-400 border-red-500/30',
-    info: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-    custom: '', // Use className for custom styling
-  };
+  const styles = variantStyles[variant];
 
   return (
-    <span 
-      className={`
-        inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border
-        ${variants[variant]}
-        ${className}
-      `}
+    <ChakraBadge
+      display="inline-flex"
+      alignItems="center"
+      px={2.5}
+      py={0.5}
+      borderRadius="full"
+      fontSize="xs"
+      fontWeight="medium"
+      borderWidth="1px"
+      className={className}
+      {...styles}
     >
       {children}
-    </span>
+    </ChakraBadge>
   );
 }
 
@@ -36,19 +44,31 @@ interface StatusBadgeProps {
   status: string;
 }
 
+const statusStyles: Record<string, { bg: string; color: string; borderColor: string }> = {
+  'Open': { bg: 'blue.500/20', color: 'blue.400', borderColor: 'blue.500/30' },
+  'Closed': { bg: 'green.500/20', color: 'green.400', borderColor: 'green.500/30' },
+  'Expired': { bg: 'gray.500/20', color: 'gray.400', borderColor: 'gray.500/30' },
+  'Exercised': { bg: 'orange.500/20', color: 'orange.400', borderColor: 'orange.500/30' },
+  'Lapsed': { bg: 'gray.500/20', color: 'gray.400', borderColor: 'gray.500/30' },
+};
+
 export function StatusBadge({ status }: StatusBadgeProps) {
-  const statusStyles: Record<string, string> = {
-    'Open': 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-    'Closed': 'bg-green-500/20 text-green-400 border-green-500/30',
-    'Expired': 'bg-gray-500/20 text-gray-400 border-gray-500/30',
-    'Exercised': 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-    'Lapsed': 'bg-gray-500/20 text-gray-400 border-gray-500/30',
-  };
+  const styles = statusStyles[status] || statusStyles['Open'];
 
   return (
-    <Badge variant="custom" className={statusStyles[status] || statusStyles['Open']}>
+    <ChakraBadge
+      display="inline-flex"
+      alignItems="center"
+      px={2.5}
+      py={0.5}
+      borderRadius="full"
+      fontSize="xs"
+      fontWeight="medium"
+      borderWidth="1px"
+      {...styles}
+    >
       {status}
-    </Badge>
+    </ChakraBadge>
   );
 }
 
@@ -57,17 +77,29 @@ interface DirectionBadgeProps {
   direction: string;
 }
 
+const directionStyles: Record<string, { bg: string; color: string; borderColor: string }> = {
+  'Sell Put': { bg: 'purple.500/20', color: 'purple.400', borderColor: 'purple.500/30' },
+  'Sell Call': { bg: 'teal.500/20', color: 'teal.400', borderColor: 'teal.500/30' },
+  'Buy Put': { bg: 'pink.500/20', color: 'pink.400', borderColor: 'pink.500/30' },
+  'Buy Call': { bg: 'cyan.500/20', color: 'cyan.400', borderColor: 'cyan.500/30' },
+};
+
 export function DirectionBadge({ direction }: DirectionBadgeProps) {
-  const directionStyles: Record<string, string> = {
-    'Sell Put': 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-    'Sell Call': 'bg-teal-500/20 text-teal-400 border-teal-500/30',
-    'Buy Put': 'bg-pink-500/20 text-pink-400 border-pink-500/30',
-    'Buy Call': 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30',
-  };
+  const styles = directionStyles[direction] || {};
 
   return (
-    <Badge variant="custom" className={directionStyles[direction] || ''}>
+    <ChakraBadge
+      display="inline-flex"
+      alignItems="center"
+      px={2.5}
+      py={0.5}
+      borderRadius="full"
+      fontSize="xs"
+      fontWeight="medium"
+      borderWidth="1px"
+      {...styles}
+    >
       {direction}
-    </Badge>
+    </ChakraBadge>
   );
 }

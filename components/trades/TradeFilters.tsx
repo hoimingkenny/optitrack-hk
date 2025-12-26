@@ -1,8 +1,8 @@
 'use client';
 
-import { Trade, TradeStatus, TradeDirection, TradeFilters } from '@/utils/types/trades';
+import { Box, Flex } from '@chakra-ui/react';
+import { Trade, TradeFilters } from '@/utils/types/trades';
 import Select from '@/components/ui/Select';
-import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 
 interface TradeFiltersProps {
@@ -52,45 +52,55 @@ export default function TradeFiltersComponent({
   const hasActiveFilters = filters.stock_symbol || filters.status || filters.direction;
 
   return (
-    <div className="flex flex-wrap items-end gap-3 p-4 bg-gray-900 rounded-lg border border-gray-800">
-      <div className="flex-1 min-w-[150px]">
+    <Flex
+      flexWrap="wrap"
+      alignItems="flex-end"
+      gap={3}
+      p={4}
+      bg="gray.900"
+      borderRadius="lg"
+      borderWidth="1px"
+      borderColor="gray.800"
+    >
+      <Box flex="1" minW="150px">
         <Select
           label="Stock"
           options={symbolOptions}
           value={filters.stock_symbol || ''}
           onChange={(e) => handleChange('stock_symbol', e.target.value)}
         />
-      </div>
+      </Box>
       
-      <div className="flex-1 min-w-[150px]">
+      <Box flex="1" minW="150px">
         <Select
           label="Status"
           options={STATUS_OPTIONS}
           value={filters.status || 'ALL'}
           onChange={(e) => handleChange('status', e.target.value)}
         />
-      </div>
+      </Box>
       
-      <div className="flex-1 min-w-[150px]">
+      <Box flex="1" minW="150px">
         <Select
           label="Direction"
           options={DIRECTION_OPTIONS}
           value={filters.direction || 'ALL'}
           onChange={(e) => handleChange('direction', e.target.value)}
         />
-      </div>
+      </Box>
 
       {hasActiveFilters && (
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={handleClearFilters}
-          className="mb-0.5"
-        >
-          Clear Filters
-        </Button>
+        <Box mb={0.5}>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleClearFilters}
+          >
+            Clear Filters
+          </Button>
+        </Box>
       )}
-    </div>
+    </Flex>
   );
 }
 
