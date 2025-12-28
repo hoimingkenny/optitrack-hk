@@ -175,14 +175,14 @@ export default function TradeForm({ onSubmit, onCancel, isLoading = false }: Tra
 
             {/* Total Premium Preview */}
             {totalPremium > 0 && (
-              <Box w="full" p={3} bg="gray.800" borderRadius="lg" borderWidth="1px" borderColor="gray.700">
+              <Box w="full" p={3} bg="bg.muted" borderRadius="lg" borderWidth="1px" borderColor="border.default">
                 <Flex justifyContent="space-between" alignItems="center">
-                  <Text fontSize="sm" color="gray.400">Total Premium:</Text>
+                  <Text fontSize="sm" color="fg.muted">Total Premium:</Text>
                   <Text fontSize="lg" fontWeight="semibold" color="green.400">
                     HKD {totalPremium.toLocaleString('en-HK', { minimumFractionDigits: 2 })}
                   </Text>
                 </Flex>
-                <Text fontSize="xs" color="gray.500" mt={1}>
+                <Text fontSize="xs" color="fg.subtle" mt={1}>
                   {premium} × {contracts} contracts × {sharesPerContract} shares
                 </Text>
               </Box>

@@ -23,18 +23,18 @@ const config = defineConfig({
     },
     semanticTokens: {
       colors: {
-        // Background colors
-        'bg.canvas': { value: '#000000' },
-        'bg.surface': { value: '#111827' },
-        'bg.muted': { value: '#1f2937' },
-        'bg.subtle': { value: '#374151' },
-        // Border colors
-        'border.default': { value: '#1f2937' },
-        'border.muted': { value: '#374151' },
-        // Text colors
-        'fg.default': { value: '#f3f4f6' },
-        'fg.muted': { value: '#9ca3af' },
-        'fg.subtle': { value: '#6b7280' },
+        // Light theme background colors
+        'bg.canvas': { value: '#ffffff' },
+        'bg.surface': { value: '#f8fafc' },
+        'bg.muted': { value: '#f1f5f9' },
+        'bg.subtle': { value: '#e2e8f0' },
+        // Light theme border colors
+        'border.default': { value: '#e2e8f0' },
+        'border.muted': { value: '#cbd5e0' },
+        // Light theme text colors
+        'fg.default': { value: '#1e293b' },
+        'fg.muted': { value: '#64748b' },
+        'fg.subtle': { value: '#94a3b8' },
       },
     },
   },

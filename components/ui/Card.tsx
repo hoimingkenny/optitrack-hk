@@ -19,9 +19,9 @@ const paddingMap = {
 export default function Card({ children, padding = 'md' }: CardProps) {
   return (
     <Box
-      bg="gray.900"
+      bg="bg.surface"
       borderWidth="1px"
-      borderColor="gray.800"
+      borderColor="border.default"
       borderRadius="xl"
       p={paddingMap[padding]}
     >
@@ -37,7 +37,7 @@ interface CardHeaderProps {
 
 export function CardHeader({ children }: CardHeaderProps) {
   return (
-    <Box borderBottomWidth="1px" borderColor="gray.800" pb={4} mb={4}>
+    <Box borderBottomWidth="1px" borderColor="border.default" pb={4} mb={4}>
       {children}
     </Box>
   );
@@ -50,7 +50,7 @@ interface CardTitleProps {
 
 export function CardTitle({ children }: CardTitleProps) {
   return (
-    <Box as="h3" fontSize="lg" fontWeight="semibold" color="gray.100">
+    <Box as="h3" fontSize="lg" fontWeight="semibold" color="fg.default">
       {children}
     </Box>
   );
@@ -72,7 +72,7 @@ interface CardFooterProps {
 
 export function CardFooter({ children }: CardFooterProps) {
   return (
-    <Box borderTopWidth="1px" borderColor="gray.800" pt={4} mt={4}>
+    <Box borderTopWidth="1px" borderColor="border.default" pt={4} mt={4}>
       {children}
     </Box>
   );

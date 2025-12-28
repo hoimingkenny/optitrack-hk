@@ -48,16 +48,16 @@ interface SummaryCardProps {
   subtitle?: string;
 }
 
-function SummaryCard({ label, value, valueClass = 'text-gray-100', subtitle }: SummaryCardProps) {
+function SummaryCard({ label, value, valueClass = 'text-fg-default', subtitle }: SummaryCardProps) {
   return (
     <Card padding="md">
-      <Text fontSize="xs" fontWeight="medium" color="gray.500" textTransform="uppercase" letterSpacing="wide">
+      <Text fontSize="xs" fontWeight="medium" color="fg.muted" textTransform="uppercase" letterSpacing="wide">
         {label}
       </Text>
       <Box className={valueClass}>
         <Text fontSize="2xl" fontWeight="bold" mt={1}>{value}</Text>
       </Box>
-      {subtitle && <Text fontSize="xs" color="gray.500" mt={0.5}>{subtitle}</Text>}
+      {subtitle && <Text fontSize="xs" color="fg.subtle" mt={0.5}>{subtitle}</Text>}
     </Card>
   );
 }

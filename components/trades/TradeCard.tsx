@@ -27,7 +27,7 @@ export default function TradeCard({ trade, onClose, onView, onDelete }: TradeCar
       {/* Header */}
       <Flex alignItems="flex-start" justifyContent="space-between" mb={3}>
         <HStack gap={2}>
-          <Text fontSize="lg" fontWeight="semibold" color="gray.100">{trade.stock_symbol}</Text>
+          <Text fontSize="lg" fontWeight="semibold" color="fg.default">{trade.stock_symbol}</Text>
           <DirectionBadge direction={trade.direction} />
           <StatusBadge status={trade.status} />
         </HStack>
@@ -41,30 +41,30 @@ export default function TradeCard({ trade, onClose, onView, onDelete }: TradeCar
       {/* Details Grid */}
       <SimpleGrid columns={{ base: 2, md: 4 }} gap={3} fontSize="sm" mb={4}>
         <Box>
-          <Text color="gray.500">Strike</Text>
-          <Text color="gray.200">{formatHKD(trade.strike_price)}</Text>
+          <Text color="fg.muted">Strike</Text>
+          <Text color="fg.default">{formatHKD(trade.strike_price)}</Text>
         </Box>
         <Box>
-          <Text color="gray.500">Expiry</Text>
-          <Text color="gray.200">{formatDateForDisplay(trade.expiry_date)}</Text>
+          <Text color="fg.muted">Expiry</Text>
+          <Text color="fg.default">{formatDateForDisplay(trade.expiry_date)}</Text>
           {isOpen && (
-            <Text fontSize="xs" color={daysToExpiry <= 7 ? 'orange.400' : 'gray.500'}>
+            <Text fontSize="xs" color={daysToExpiry <= 7 ? 'orange.400' : 'fg.subtle'}>
               {getRelativeTimeString(trade.expiry_date)}
             </Text>
           )}
         </Box>
         <Box>
-          <Text color="gray.500">Premium</Text>
-          <Text color="gray.200">{formatHKD(trade.premium)}/share</Text>
+          <Text color="fg.muted">Premium</Text>
+          <Text color="fg.default">{formatHKD(trade.premium)}/share</Text>
         </Box>
         <Box>
-          <Text color="gray.500">Total</Text>
+          <Text color="fg.muted">Total</Text>
           <Text color="green.400">{formatHKD(trade.total_premium)}</Text>
         </Box>
       </SimpleGrid>
 
       {/* Secondary Info */}
-      <HStack gap={4} fontSize="xs" color="gray.500" mb={4}>
+      <HStack gap={4} fontSize="xs" color="fg.subtle" mb={4}>
         <Text>{trade.contracts} contract{trade.contracts > 1 ? 's' : ''}</Text>
         <Text>×</Text>
         <Text>{trade.shares_per_contract} shares</Text>
@@ -83,7 +83,7 @@ export default function TradeCard({ trade, onClose, onView, onDelete }: TradeCar
       </HStack>
 
       {/* Actions */}
-      <Flex alignItems="center" justifyContent="flex-end" gap={2} pt={3} borderTopWidth="1px" borderColor="gray.800">
+      <Flex alignItems="center" justifyContent="flex-end" gap={2} pt={3} borderTopWidth="1px" borderColor="border.default">
         {onView && (
           <Button size="sm" variant="ghost" onClick={() => onView(trade)}>
             View

@@ -20,9 +20,9 @@ export default function DashboardNav({ onSignOut, userEmail }: DashboardNavProps
   return (
     <Box
       as="nav"
-      bg="gray.900"
+      bg="bg.surface"
       borderBottomWidth="1px"
-      borderColor="gray.800"
+      borderColor="border.default"
       position="sticky"
       top={0}
       zIndex={40}
@@ -32,8 +32,8 @@ export default function DashboardNav({ onSignOut, userEmail }: DashboardNavProps
           {/* Logo */}
           <Link href="/">
             <HStack gap={2}>
-              <Text fontSize="xl" fontWeight="bold" color="blue.400">📈</Text>
-              <Text fontSize="lg" fontWeight="semibold" color="gray.100">OptiTrack HK</Text>
+              <Text fontSize="xl" fontWeight="bold" color="brand.500">📈</Text>
+              <Text fontSize="lg" fontWeight="semibold" color="fg.default">OptiTrack HK</Text>
             </HStack>
           </Link>
 
@@ -51,11 +51,11 @@ export default function DashboardNav({ onSignOut, userEmail }: DashboardNavProps
                     fontSize="sm"
                     fontWeight="medium"
                     transition="colors"
-                    bg={isActive ? 'blue.600/20' : 'transparent'}
-                    color={isActive ? 'blue.400' : 'gray.400'}
+                    bg={isActive ? 'brand.500/20' : 'transparent'}
+                    color={isActive ? 'brand.500' : 'fg.muted'}
                     _hover={{
-                      color: isActive ? 'blue.400' : 'gray.200',
-                      bg: isActive ? 'blue.600/20' : 'gray.800',
+                      color: isActive ? 'brand.500' : 'fg.default',
+                      bg: isActive ? 'brand.500/20' : 'bg.muted',
                     }}
                   >
                     <item.icon className="w-4 h-4" />
@@ -72,7 +72,7 @@ export default function DashboardNav({ onSignOut, userEmail }: DashboardNavProps
               <Text
                 display={{ base: 'none', sm: 'block' }}
                 fontSize="sm"
-                color="gray.400"
+                color="fg.muted"
                 truncate
                 maxW="150px"
               >
@@ -90,7 +90,7 @@ export default function DashboardNav({ onSignOut, userEmail }: DashboardNavProps
       <Flex
         display={{ base: 'flex', md: 'none' }}
         borderTopWidth="1px"
-        borderColor="gray.800"
+        borderColor="border.default"
         px={2}
         py={2}
         gap={1}
@@ -108,11 +108,11 @@ export default function DashboardNav({ onSignOut, userEmail }: DashboardNavProps
                 fontSize="sm"
                 fontWeight="medium"
                 whiteSpace="nowrap"
-                bg={isActive ? 'blue.600/20' : 'transparent'}
-                color={isActive ? 'blue.400' : 'gray.400'}
+                bg={isActive ? 'brand.500/20' : 'transparent'}
+                color={isActive ? 'brand.500' : 'fg.muted'}
                 _hover={{
-                  color: isActive ? 'blue.400' : 'gray.200',
-                  bg: isActive ? 'blue.600/20' : 'gray.800',
+                  color: isActive ? 'brand.500' : 'fg.default',
+                  bg: isActive ? 'brand.500/20' : 'bg.muted',
                 }}
               >
                 <item.icon className="w-4 h-4" />

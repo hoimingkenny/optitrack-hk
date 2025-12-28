@@ -28,7 +28,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
     return (
       <Field.Root invalid={!!error} required={required}>
         {label && (
-          <Field.Label htmlFor={selectId} fontSize="sm" fontWeight="medium" color="gray.300" mb={1.5}>
+          <Field.Label htmlFor={selectId} fontSize="sm" fontWeight="medium" color="fg.muted" mb={1.5}>
             {label}
             {required && <Box as="span" color="red.400" ml={1}>*</Box>}
           </Field.Label>
@@ -44,11 +44,13 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
           aria-describedby={error ? `${selectId}-error` : undefined}
           style={{
             width: '100%',
-            padding: '8px 12px',
-            borderRadius: '8px',
-            backgroundColor: '#1f2937',
-            border: `1px solid ${error ? '#ef4444' : '#374151'}`,
-            color: '#f3f4f6',
+            padding: '0.5rem 0.75rem',
+            backgroundColor: 'var(--chakra-colors-bg-surface)',
+            borderWidth: '1px',
+            borderStyle: 'solid',
+            borderColor: error ? '#ef4444' : 'var(--chakra-colors-border-default)',
+            color: 'var(--chakra-colors-fg-default)',
+            borderRadius: '0.5rem',
             outline: 'none',
             cursor: disabled ? 'not-allowed' : 'pointer',
             opacity: disabled ? 0.5 : 1,

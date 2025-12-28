@@ -57,10 +57,10 @@ export default function TradeFiltersComponent({
       alignItems="flex-end"
       gap={3}
       p={4}
-      bg="gray.900"
+      bg="bg.surface"
       borderRadius="lg"
       borderWidth="1px"
-      borderColor="gray.800"
+      borderColor="border.default"
     >
       <Box flex="1" minW="150px">
         <Select

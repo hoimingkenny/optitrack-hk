@@ -208,8 +208,8 @@ export default function Home() {
     return (
       <Center minH="100vh">
         <VStack>
-          <Spinner size="xl" color="blue.500" borderWidth="4px" />
-          <Text color="gray.400">Loading...</Text>
+          <Spinner size="xl" color="brand.500" borderWidth="4px" />
+          <Text color="fg.muted">Loading...</Text>
         </VStack>
       </Center>
     );
@@ -221,8 +221,8 @@ export default function Home() {
       <Center minH="100vh" p={4}>
         <Box w="full" maxW="md">
           <VStack textAlign="center" mb={8}>
-            <Text fontSize="3xl" fontWeight="bold" color="gray.100">📈 OptiTrack HK</Text>
-            <Text color="gray.400">Hong Kong Stock Options Tracker</Text>
+            <Text fontSize="3xl" fontWeight="bold" color="fg.default">📈 OptiTrack HK</Text>
+            <Text color="fg.muted">Hong Kong Stock Options Tracker</Text>
           </VStack>
           <AuthForm
             mode={authMode}
@@ -238,93 +238,95 @@ export default function Home() {
 
   // Dashboard
   return (
-    <Box minH="100vh">
+    <Box minH="100vh" w="100%">
       <DashboardNav onSignOut={handleSignOut} userEmail={user.email} />
       
-      <Container maxW="7xl" px={{ base: 4, sm: 6, lg: 8 }} py={6}>
-        {/* Header */}
-        <Flex alignItems="center" justifyContent="space-between" mb={6}>
-          <Box>
-            <Text fontSize="2xl" fontWeight="bold" color="gray.100">Dashboard</Text>
-            <Text color="gray.400" fontSize="sm">
-              {new Date().toLocaleDateString('en-HK', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })}
-            </Text>
-          </Box>
-          <Button onClick={() => setShowNewTradeForm(true)}>
-            + New Trade
-          </Button>
-        </Flex>
-
-        {/* New Trade Form */}
-        {showNewTradeForm && (
-          <Box mb={6}>
-            <TradeForm
-              onSubmit={handleCreateTrade}
-              onCancel={() => setShowNewTradeForm(false)}
-              isLoading={formLoading}
-            />
-          </Box>
-        )}
-
-        {/* PNL Summary */}
-        {trades.length > 0 && (
-          <Box mb={6}>
-            <PNLSummary trades={trades} />
-          </Box>
-        )}
-
-        {/* Filters */}
-        {trades.length > 0 && (
-          <Box mb={6}>
-            <TradeFiltersComponent
-              filters={filters}
-              onFilterChange={setFilters}
-              stockSymbols={stockSymbols}
-            />
-          </Box>
-        )}
-
-        {/* Trade List */}
-        {tradesLoading ? (
-          <Center py={12}>
-            <VStack gap={2}>
-              <Spinner size="lg" color="blue.500" borderWidth="4px" />
-              <Text color="gray.400">Loading trades...</Text>
-            </VStack>
-          </Center>
-        ) : filteredTrades.length === 0 ? (
-          <Center py={12} bg="gray.900" borderRadius="xl" borderWidth="1px" borderColor="gray.800">
-            <VStack gap={4}>
-              <Text color="gray.400" mb={0}>
-                {trades.length === 0 
-                  ? "No trades yet. Create your first trade to get started!" 
-                  : "No trades match your filters."}
+      <Box w="100%">
+        <Container maxW="7xl" mx="auto" px={{ base: 4, sm: 6, lg: 8 }} py={6}>
+          {/* Header */}
+          <Flex alignItems="center" justifyContent="space-between" mb={6}>
+            <Box>
+              <Text fontSize="2xl" fontWeight="bold" color="fg.default">Dashboard</Text>
+              <Text color="fg.muted" fontSize="sm">
+                {new Date().toLocaleDateString('en-HK', { 
+                  weekday: 'long', 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}
               </Text>
-              {trades.length === 0 && (
-                <Button onClick={() => setShowNewTradeForm(true)}>
-                  Create First Trade
-                </Button>
-              )}
-            </VStack>
-          </Center>
-        ) : (
-          <VStack gap={4} align="stretch">
-            {filteredTrades.map(trade => (
-              <TradeCard
-                key={trade.id}
-                trade={trade}
-                onClose={(t) => setCloseModalTrade(t)}
-                onDelete={(t) => setDeleteModalTrade(t)}
+            </Box>
+            <Button onClick={() => setShowNewTradeForm(true)}>
+              + New Trade
+            </Button>
+          </Flex>
+
+          {/* New Trade Form */}
+          {showNewTradeForm && (
+            <Box mb={6}>
+              <TradeForm
+                onSubmit={handleCreateTrade}
+                onCancel={() => setShowNewTradeForm(false)}
+                isLoading={formLoading}
               />
-            ))}
-          </VStack>
-        )}
-      </Container>
+            </Box>
+          )}
+
+          {/* PNL Summary */}
+          {trades.length > 0 && (
+            <Box mb={6}>
+              <PNLSummary trades={trades} />
+            </Box>
+          )}
+
+          {/* Filters */}
+          {trades.length > 0 && (
+            <Box mb={6}>
+              <TradeFiltersComponent
+                filters={filters}
+                onFilterChange={setFilters}
+                stockSymbols={stockSymbols}
+              />
+            </Box>
+          )}
+
+          {/* Trade List */}
+          {tradesLoading ? (
+            <Center py={12}>
+              <VStack gap={2}>
+                <Spinner size="lg" color="brand.500" borderWidth="4px" />
+                <Text color="fg.muted">Loading trades...</Text>
+              </VStack>
+            </Center>
+          ) : filteredTrades.length === 0 ? (
+            <Center py={12} bg="bg.surface" borderRadius="xl" borderWidth="1px" borderColor="border.default">
+              <VStack gap={4}>
+                <Text color="fg.muted" mb={0}>
+                  {trades.length === 0 
+                    ? "No trades yet. Create your first trade to get started!" 
+                    : "No trades match your filters."}
+                </Text>
+                {trades.length === 0 && (
+                  <Button onClick={() => setShowNewTradeForm(true)}>
+                    Create First Trade
+                  </Button>
+                )}
+              </VStack>
+            </Center>
+          ) : (
+            <VStack gap={4} align="stretch">
+              {filteredTrades.map(trade => (
+                <TradeCard
+                  key={trade.id}
+                  trade={trade}
+                  onClose={(t) => setCloseModalTrade(t)}
+                  onDelete={(t) => setDeleteModalTrade(t)}
+                />
+              ))}
+            </VStack>
+          )}
+        </Container>
+      </Box>
 
       {/* Close Trade Modal */}
       {closeModalTrade && (

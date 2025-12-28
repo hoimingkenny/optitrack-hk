@@ -16,7 +16,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     return (
       <Field.Root invalid={!!error} required={required}>
         {label && (
-          <Field.Label htmlFor={inputId} fontSize="sm" fontWeight="medium" color="gray.300" mb={1.5}>
+          <Field.Label htmlFor={inputId} fontSize="sm" fontWeight="medium" color="fg.muted" mb={1.5}>
             {label}
             {required && <Box as="span" color="red.400" ml={1}>*</Box>}
           </Field.Label>
@@ -24,15 +24,15 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         <ChakraInput
           ref={ref}
           id={inputId}
-          bg="gray.800"
-          borderColor={error ? 'red.500' : 'gray.700'}
-          color="gray.100"
+          bg="bg.surface"
+          borderColor={error ? 'red.500' : 'border.default'}
+          color="fg.default"
           borderRadius="lg"
           px={3}
           py={2}
-          _placeholder={{ color: 'gray.500' }}
+          _placeholder={{ color: 'fg.subtle' }}
           _focus={{
-            borderColor: error ? 'red.500' : 'blue.500',
+            borderColor: error ? 'red.500' : 'brand.500',
             boxShadow: 'none',
             outline: 'none',
           }}
@@ -47,7 +47,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
           </Field.ErrorText>
         )}
         {helperText && !error && (
-          <Field.HelperText id={`${inputId}-helper`} mt={1.5} fontSize="sm" color="gray.500">
+          <Field.HelperText id={`${inputId}-helper`} mt={1.5} fontSize="sm" color="fg.subtle">
             {helperText}
           </Field.HelperText>
         )}

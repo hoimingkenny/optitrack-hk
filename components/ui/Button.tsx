@@ -18,26 +18,26 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ variant = 'primary', size = 'md', isLoading, disabled, children, onClick, type = 'button', ...props }, ref) => {
     const variantStyles = {
       primary: {
-        bg: 'blue.600',
+        bg: 'brand.500',
         color: 'white',
-        _hover: { bg: 'blue.700' },
+        _hover: { bg: 'brand.600' },
       },
       secondary: {
-        bg: 'gray.700',
-        color: 'gray.100',
+        bg: 'bg.muted',
+        color: 'fg.default',
         borderWidth: '1px',
-        borderColor: 'gray.600',
-        _hover: { bg: 'gray.600' },
+        borderColor: 'border.default',
+        _hover: {},
       },
       danger: {
-        bg: 'red.600',
+        bg: 'red.500',
         color: 'white',
-        _hover: { bg: 'red.700' },
+        _hover: { bg: 'red.600' },
       },
       ghost: {
         bg: 'transparent',
-        color: 'gray.300',
-        _hover: { bg: 'gray.800' },
+        color: 'fg.default',
+        _hover: {},
       },
     };
 

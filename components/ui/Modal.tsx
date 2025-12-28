@@ -40,9 +40,9 @@ export default function Modal({ isOpen, onClose, title, children, footer, size =
     >
       <DialogBackdrop bg="blackAlpha.700" backdropFilter="blur(4px)" />
       <DialogContent
-        bg="gray.900"
+        bg="bg.surface"
         borderWidth="1px"
-        borderColor="gray.800"
+        borderColor="border.default"
         borderRadius="xl"
         shadow="2xl"
       >
@@ -52,9 +52,9 @@ export default function Modal({ isOpen, onClose, title, children, footer, size =
           justifyContent="space-between"
           p={4}
           borderBottomWidth="1px"
-          borderColor="gray.800"
+          borderColor="border.default"
         >
-          <DialogTitle fontSize="lg" fontWeight="semibold" color="gray.100">
+          <DialogTitle fontSize="lg" fontWeight="semibold" color="fg.default">
             {title}
           </DialogTitle>
           <DialogCloseTrigger
@@ -62,8 +62,8 @@ export default function Modal({ isOpen, onClose, title, children, footer, size =
             top="0"
             right="0"
             p={1}
-            color="gray.400"
-            _hover={{ color: 'gray.200', bg: 'gray.800' }}
+            color="fg.muted"
+            _hover={{ color: 'fg.default', bg: 'bg.muted' }}
             borderRadius="lg"
           />
         </DialogHeader>
@@ -80,7 +80,7 @@ export default function Modal({ isOpen, onClose, title, children, footer, size =
             gap={3}
             p={4}
             borderTopWidth="1px"
-            borderColor="gray.800"
+            borderColor="border.default"
           >
             {footer}
           </DialogFooter>

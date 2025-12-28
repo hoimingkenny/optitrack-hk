@@ -87,27 +87,27 @@ export default function CloseTradeModal({
       <form onSubmit={handleSubmit}>
         <VStack gap={4}>
           {/* Trade Summary */}
-          <Box w="full" p={4} bg="gray.800" borderRadius="lg" borderWidth="1px" borderColor="gray.700">
+          <Box w="full" p={4} bg="bg.muted" borderRadius="lg" borderWidth="1px" borderColor="border.default">
             <Flex alignItems="center" gap={2} mb={3}>
-              <Text fontSize="lg" fontWeight="semibold" color="gray.100">{trade.stock_symbol}</Text>
+              <Text fontSize="lg" fontWeight="semibold" color="fg.default">{trade.stock_symbol}</Text>
               <DirectionBadge direction={trade.direction} />
             </Flex>
             
             <SimpleGrid columns={2} gap={4} fontSize="sm">
               <Box>
-                <Text as="span" color="gray.400">Strike:</Text>
-                <Text as="span" ml={2} color="gray.100">{formatHKD(trade.strike_price)}</Text>
+                <Text as="span" color="fg.muted">Strike:</Text>
+                <Text as="span" ml={2} color="fg.default">{formatHKD(trade.strike_price)}</Text>
               </Box>
               <Box>
-                <Text as="span" color="gray.400">Expiry:</Text>
-                <Text as="span" ml={2} color="gray.100">{formatDateForDisplay(trade.expiry_date)}</Text>
+                <Text as="span" color="fg.muted">Expiry:</Text>
+                <Text as="span" ml={2} color="fg.default">{formatDateForDisplay(trade.expiry_date)}</Text>
               </Box>
               <Box>
-                <Text as="span" color="gray.400">Open Premium:</Text>
-                <Text as="span" ml={2} color="gray.100">{formatHKD(trade.premium)}/share</Text>
+                <Text as="span" color="fg.muted">Open Premium:</Text>
+                <Text as="span" ml={2} color="fg.default">{formatHKD(trade.premium)}/share</Text>
               </Box>
               <Box>
-                <Text as="span" color="gray.400">Total Premium:</Text>
+                <Text as="span" color="fg.muted">Total Premium:</Text>
                 <Text as="span" ml={2} color="green.400">{formatHKD(trade.total_premium)}</Text>
               </Box>
             </SimpleGrid>
@@ -161,25 +161,25 @@ export default function CloseTradeModal({
 
           {/* PNL Preview */}
           {closePremium > 0 && (
-            <Box w="full" p={4} bg="gray.800" borderRadius="lg" borderWidth="1px" borderColor="gray.700">
-              <Text fontSize="sm" fontWeight="medium" color="gray.400" mb={3}>PNL Preview</Text>
+            <Box w="full" p={4} bg="bg.muted" borderRadius="lg" borderWidth="1px" borderColor="border.default">
+              <Text fontSize="sm" fontWeight="medium" color="fg.muted" mb={3}>PNL Preview</Text>
               <VStack gap={2} fontSize="sm" align="stretch">
                 <Flex justifyContent="space-between">
-                  <Text color="gray.400">Close Total Premium:</Text>
+                  <Text color="fg.muted">Close Total Premium:</Text>
                   <Text color="red.400">-{formatHKD(closeTotalPremium)}</Text>
                 </Flex>
                 <Flex justifyContent="space-between">
-                  <Text color="gray.400">Gross PNL:</Text>
+                  <Text color="fg.muted">Gross PNL:</Text>
                   <Text color={grossPNL >= 0 ? 'green.400' : 'red.400'}>
                     {grossPNL >= 0 ? '+' : ''}{formatHKD(grossPNL)}
                   </Text>
                 </Flex>
                 <Flex justifyContent="space-between">
-                  <Text color="gray.400">Total Fees:</Text>
-                  <Text color="gray.300">-{formatHKD(totalFees)}</Text>
+                  <Text color="fg.muted">Total Fees:</Text>
+                  <Text color="fg.default">-{formatHKD(totalFees)}</Text>
                 </Flex>
-                <Flex justifyContent="space-between" pt={2} borderTopWidth="1px" borderColor="gray.700">
-                  <Text fontWeight="medium" color="gray.200">Net PNL:</Text>
+                <Flex justifyContent="space-between" pt={2} borderTopWidth="1px" borderColor="border.default">
+                  <Text fontWeight="medium" color="fg.default">Net PNL:</Text>
                   <Text fontSize="lg" fontWeight="bold" color={netPNL >= 0 ? 'green.400' : 'red.400'}>
                     {netPNL >= 0 ? '+' : ''}{formatHKD(netPNL)}
                   </Text>

@@ -57,7 +57,7 @@ export default function AuthForm({
               {mode === 'login' ? 'Sign In' : 'Create Account'}
             </Text>
           </CardTitle>
-          <Text textAlign="center" color="gray.400" fontSize="sm" mt={2}>
+          <Text textAlign="center" color="fg.muted" fontSize="sm" mt={2}>
             {mode === 'login' 
               ? 'Welcome back to OptiTrack HK' 
               : 'Start tracking your HK options trades'}
