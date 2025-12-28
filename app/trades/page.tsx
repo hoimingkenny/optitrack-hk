@@ -3,47 +3,55 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Box, Container, Flex, Text, VStack, Center, Spinner } from '@chakra-ui/react';
 import { User } from '@supabase/supabase-js';
-import { Trade, NewTradeInput } from '@/utils/types/trades';
+import { Trade, TradeFilters, CloseTradeInput } from '@/utils/types/trades';
 import { 
   supabase, 
-  signIn, 
-  signUp, 
-  signOut, 
   getTrades, 
-  createTrade, 
+  closeTrade,
+  deleteTrade,
   getOpenTrades,
   batchUpdateTradeStatuses
 } from '@/utils/supabase';
 import { checkAndUpdateExpiredTrades } from '@/utils/helpers/status-calculator';
-import AuthForm from '@/components/auth/AuthForm';
 import DashboardNav from '@/components/layout/DashboardNav';
-import TradeForm from '@/components/trades/TradeForm';
-import PNLSummary from '@/components/trades/PNLSummary';
-import Button from '@/components/ui/Button';
+import TradeCard from '@/components/trades/TradeCard';
+import TradeFiltersComponent, { applyTradeFilters } from '@/components/trades/TradeFilters';
+import CloseTradeModal from '@/components/trades/CloseTradeModal';
 import { toast } from '@/components/ui/Toast';
+import { ConfirmModal } from '@/components/ui/Modal';
+import { useRouter } from 'next/navigation';
 
-export default function Home() {
+export default function AllTradesPage() {
+  const router = useRouter();
+  
   // Auth state
   const [user, setUser] = useState<User | null>(null);
-  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
-  const [authLoading, setAuthLoading] = useState(false);
-  const [authError, setAuthError] = useState('');
   const [initialLoading, setInitialLoading] = useState(true);
 
   // Trade state
   const [trades, setTrades] = useState<Trade[]>([]);
+  const [filters, setFilters] = useState<TradeFilters>({});
   const [tradesLoading, setTradesLoading] = useState(false);
-  const [showNewTradeForm, setShowNewTradeForm] = useState(false);
-  const [formLoading, setFormLoading] = useState(false);
+
+  // Modal state
+  const [closeModalTrade, setCloseModalTrade] = useState<Trade | null>(null);
+  const [closeModalLoading, setCloseModalLoading] = useState(false);
+  const [deleteModalTrade, setDeleteModalTrade] = useState<Trade | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Check auth state on mount
   useEffect(() => {
     const checkAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        setUser(session?.user || null);
+        if (!session?.user) {
+          router.push('/');
+          return;
+        }
+        setUser(session.user);
       } catch (error) {
         console.error('Auth check error:', error);
+        router.push('/');
       } finally {
         setInitialLoading(false);
       }
@@ -53,11 +61,15 @@ export default function Home() {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null);
+      if (!session?.user) {
+        router.push('/');
+        return;
+      }
+      setUser(session.user);
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [router]);
 
   // Load trades when user is authenticated
   const loadTrades = useCallback(async () => {
@@ -103,54 +115,53 @@ export default function Home() {
     }
   }, [user, loadTrades, checkExpiredTrades]);
 
-  // Auth handlers
-  const handleAuth = async (email: string, password: string) => {
-    setAuthLoading(true);
-    setAuthError('');
-    
-    try {
-      if (authMode === 'login') {
-        await signIn(email, password);
-        toast.success('Welcome back!');
-      } else {
-        await signUp(email, password);
-        toast.success('Account created! Please check your email to verify.');
-      }
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
-      setAuthError(errorMessage);
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
   const handleSignOut = async () => {
     try {
-      await signOut();
-      setTrades([]);
+      await supabase.auth.signOut();
+      router.push('/');
       toast.info('Signed out successfully');
     } catch {
       toast.error('Failed to sign out');
     }
   };
 
-  // Trade handlers
-  const handleCreateTrade = async (data: NewTradeInput) => {
-    if (!user) return;
+  const handleCloseTrade = async (data: CloseTradeInput) => {
+    if (!user || !closeModalTrade) return;
     
-    setFormLoading(true);
+    setCloseModalLoading(true);
     try {
-      await createTrade(user.id, data);
-      toast.success('Trade opened successfully!');
-      setShowNewTradeForm(false);
+      await closeTrade(closeModalTrade.id, user.id, data);
+      toast.success('Position closed successfully!');
+      setCloseModalTrade(null);
       await loadTrades();
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create trade';
+      const errorMessage = error instanceof Error ? error.message : 'Failed to close trade';
       toast.error(errorMessage);
     } finally {
-      setFormLoading(false);
+      setCloseModalLoading(false);
     }
   };
+
+  const handleDeleteTrade = async () => {
+    if (!user || !deleteModalTrade) return;
+    
+    setDeleteLoading(true);
+    try {
+      await deleteTrade(deleteModalTrade.id, user.id);
+      toast.success('Trade deleted');
+      setDeleteModalTrade(null);
+      await loadTrades();
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete trade';
+      toast.error(errorMessage);
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  // Get unique stock symbols for filter
+  const stockSymbols = [...new Set(trades.map(t => t.stock_symbol))].sort();
+  const filteredTrades = applyTradeFilters(trades, filters);
 
   // Loading state
   if (initialLoading) {
@@ -164,28 +175,10 @@ export default function Home() {
     );
   }
 
-  // Auth screen
   if (!user) {
-    return (
-      <Center minH="100vh" p={4}>
-        <Box w="full" maxW="md">
-          <VStack textAlign="center" mb={8}>
-            <Text fontSize="3xl" fontWeight="bold" color="fg.default">📈 OptiTrack HK</Text>
-            <Text color="fg.muted">Hong Kong Stock Options Tracker</Text>
-          </VStack>
-          <AuthForm
-            mode={authMode}
-            onSubmit={handleAuth}
-            onToggleMode={() => setAuthMode(m => m === 'login' ? 'signup' : 'login')}
-            isLoading={authLoading}
-            error={authError}
-          />
-        </Box>
-      </Center>
-    );
+    return null;
   }
 
-  // Dashboard
   return (
     <Box minH="100vh" w="100%">
       <DashboardNav onSignOut={handleSignOut} userEmail={user.email} />
@@ -195,33 +188,25 @@ export default function Home() {
           {/* Header */}
           <Flex alignItems="center" justifyContent="space-between" mb={6}>
             <Box>
-              <Text fontSize="2xl" fontWeight="bold" color="fg.default">Dashboard</Text>
+              <Text fontSize="2xl" fontWeight="bold" color="fg.default">All Trades</Text>
               <Text color="fg.muted" fontSize="sm">
-                {new Date().toLocaleDateString('en-HK', { 
-                  weekday: 'long', 
-                  year: 'numeric', 
-                  month: 'long', 
-                  day: 'numeric' 
-                })}
+                {trades.length} total trade{trades.length !== 1 ? 's' : ''}
               </Text>
             </Box>
-            <Button onClick={() => setShowNewTradeForm(true)}>
-              + New Trade
-            </Button>
           </Flex>
 
-          {/* New Trade Form */}
-          {showNewTradeForm && (
+          {/* Filters */}
+          {trades.length > 0 && (
             <Box mb={6}>
-              <TradeForm
-                onSubmit={handleCreateTrade}
-                onCancel={() => setShowNewTradeForm(false)}
-                isLoading={formLoading}
+              <TradeFiltersComponent
+                filters={filters}
+                onFilterChange={setFilters}
+                stockSymbols={stockSymbols}
               />
             </Box>
           )}
 
-          {/* PNL Summary */}
+          {/* Trade List */}
           {tradesLoading ? (
             <Center py={12}>
               <VStack gap={2}>
@@ -229,24 +214,53 @@ export default function Home() {
                 <Text color="fg.muted">Loading trades...</Text>
               </VStack>
             </Center>
-          ) : trades.length > 0 ? (
-            <Box mb={6}>
-              <PNLSummary trades={trades} />
-            </Box>
-          ) : (
+          ) : filteredTrades.length === 0 ? (
             <Center py={12} bg="bg.surface" borderRadius="xl" borderWidth="1px" borderColor="border.default">
               <VStack gap={4}>
                 <Text color="fg.muted" mb={0}>
-                  No trades yet. Create your first trade to get started!
+                  {trades.length === 0 
+                    ? "No trades yet. Create your first trade from the Dashboard!" 
+                    : "No trades match your filters."}
                 </Text>
-                <Button onClick={() => setShowNewTradeForm(true)}>
-                  Create First Trade
-                </Button>
               </VStack>
             </Center>
+          ) : (
+            <VStack gap={4} align="stretch">
+              {filteredTrades.map(trade => (
+                <TradeCard
+                  key={trade.id}
+                  trade={trade}
+                  onClose={(t) => setCloseModalTrade(t)}
+                  onDelete={(t) => setDeleteModalTrade(t)}
+                />
+              ))}
+            </VStack>
           )}
         </Container>
       </Box>
+
+      {/* Close Trade Modal */}
+      {closeModalTrade && (
+        <CloseTradeModal
+          trade={closeModalTrade}
+          isOpen={!!closeModalTrade}
+          onClose={() => setCloseModalTrade(null)}
+          onSubmit={handleCloseTrade}
+          isLoading={closeModalLoading}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!deleteModalTrade}
+        onClose={() => setDeleteModalTrade(null)}
+        onConfirm={handleDeleteTrade}
+        title="Delete Trade"
+        message={`Are you sure you want to delete the ${deleteModalTrade?.stock_symbol} trade? This action cannot be undone.`}
+        confirmText="Delete"
+        variant="danger"
+        isLoading={deleteLoading}
+      />
     </Box>
   );
 }
