@@ -3,16 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Box, Container, Flex, Text, VStack, Center, Spinner } from '@chakra-ui/react';
 import { User } from '@supabase/supabase-js';
-import { Trade, TradeFilters, CloseTradeInput } from '@/utils/types/trades';
-import { 
-  supabase, 
-  getTrades, 
-  closeTrade,
-  deleteTrade,
-  getOpenTrades,
-  batchUpdateTradeStatuses
-} from '@/utils/supabase';
-import { checkAndUpdateExpiredTrades } from '@/utils/helpers/status-calculator';
+import { Trade, CloseTradeInput, TradeFilters } from '@/db/schema';
+import { supabase } from '@/utils/supabase';
 import DashboardNav from '@/components/layout/DashboardNav';
 import TradeCard from '@/components/trades/TradeCard';
 import TradeFiltersComponent, { applyTradeFilters } from '@/components/trades/TradeFilters';
@@ -77,8 +69,15 @@ export default function AllTradesPage() {
     
     setTradesLoading(true);
     try {
-      const data = await getTrades(user.id);
-      setTrades(data);
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch('/api/trades', {
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch trades');
+      const data = await response.json();
+      setTrades(data.trades);
     } catch (error) {
       console.error('Error loading trades:', error);
       toast.error('Failed to load trades');
@@ -92,15 +91,17 @@ export default function AllTradesPage() {
     if (!user) return;
     
     try {
-      const openTrades = await getOpenTrades(user.id);
-      const updates = checkAndUpdateExpiredTrades(openTrades);
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch('/api/trades/check-expired', {
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to check expired trades');
+      const data = await response.json();
       
-      if (updates.length > 0) {
-        await batchUpdateTradeStatuses(
-          user.id, 
-          updates.map(u => ({ id: u.trade.id, status: u.newStatus }))
-        );
-        toast.info(`${updates.length} trade(s) status updated`);
+      if (data.updatedCount > 0) {
+        toast.info(`${data.updatedCount} trade(s) status updated`);
         await loadTrades();
       }
     } catch (error) {
@@ -130,7 +131,21 @@ export default function AllTradesPage() {
     
     setCloseModalLoading(true);
     try {
-      await closeTrade(closeModalTrade.id, user.id, data);
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(`/api/trades/${closeModalTrade.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to close trade');
+      }
+      
       toast.success('Position closed successfully!');
       setCloseModalTrade(null);
       await loadTrades();
@@ -147,7 +162,19 @@ export default function AllTradesPage() {
     
     setDeleteLoading(true);
     try {
-      await deleteTrade(deleteModalTrade.id, user.id);
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(`/api/trades/${deleteModalTrade.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete trade');
+      }
+      
       toast.success('Trade deleted');
       setDeleteModalTrade(null);
       await loadTrades();

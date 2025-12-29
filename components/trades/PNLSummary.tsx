@@ -1,10 +1,16 @@
 'use client';
 
-import { SimpleGrid, Box, Text } from '@chakra-ui/react';
-import { Trade, TradeSummary, StockSummary } from '@/utils/types/trades';
-import { getFinalPNL, formatPNL, getPNLColorClass, calculatePortfolioPNL } from '@/utils/helpers/pnl-calculator';
+import { useMemo } from 'react';
+import { Box, Text, SimpleGrid } from '@chakra-ui/react';
+import { Trade, TradeSummary, StockSummary } from '@/db/schema';
+import { 
+  calculatePortfolioPNL, 
+  getFinalPNL, 
+  formatPNL, 
+  getPNLColorClass 
+} from '@/utils/helpers/pnl-calculator';
 import { calculateHoldDays } from '@/utils/helpers/status-calculator';
-import Card from '@/components/ui/Card';
+import Card from '../ui/Card';
 
 interface PNLSummaryProps {
   trades: Trade[];
