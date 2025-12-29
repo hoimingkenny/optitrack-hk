@@ -3,18 +3,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Box, Container, Flex, Text, VStack, Center, Spinner } from '@chakra-ui/react';
 import { User } from '@supabase/supabase-js';
-import { Trade, NewTradeInput } from '@/utils/types/trades';
+import { Trade, NewTradeInput } from '@/db/schema';
 import { 
   supabase, 
   signIn, 
   signUp, 
-  signOut, 
-  getTrades, 
-  createTrade, 
-  getOpenTrades,
-  batchUpdateTradeStatuses
+  signOut
 } from '@/utils/supabase';
-import { checkAndUpdateExpiredTrades } from '@/utils/helpers/status-calculator';
 import AuthForm from '@/components/auth/AuthForm';
 import DashboardNav from '@/components/layout/DashboardNav';
 import TradeForm from '@/components/trades/TradeForm';
@@ -65,8 +60,15 @@ export default function Home() {
     
     setTradesLoading(true);
     try {
-      const data = await getTrades(user.id);
-      setTrades(data);
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch('/api/trades', {
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to fetch trades');
+      const data = await response.json();
+      setTrades(data.trades);
     } catch (error) {
       console.error('Error loading trades:', error);
       toast.error('Failed to load trades');
@@ -80,15 +82,17 @@ export default function Home() {
     if (!user) return;
     
     try {
-      const openTrades = await getOpenTrades(user.id);
-      const updates = checkAndUpdateExpiredTrades(openTrades);
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch('/api/trades/check-expired', {
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to check expired trades');
+      const data = await response.json();
       
-      if (updates.length > 0) {
-        await batchUpdateTradeStatuses(
-          user.id, 
-          updates.map(u => ({ id: u.trade.id, status: u.newStatus }))
-        );
-        toast.info(`${updates.length} trade(s) status updated`);
+      if (data.updatedCount > 0) {
+        toast.info(`${data.updatedCount} trade(s) status updated`);
         await loadTrades();
       }
     } catch (error) {
@@ -140,7 +144,21 @@ export default function Home() {
     
     setFormLoading(true);
     try {
-      await createTrade(user.id, data);
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch('/api/trades', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create trade');
+      }
+      
       toast.success('Trade opened successfully!');
       setShowNewTradeForm(false);
       await loadTrades();

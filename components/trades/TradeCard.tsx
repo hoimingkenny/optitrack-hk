@@ -1,13 +1,14 @@
 'use client';
 
-import { Box, Flex, SimpleGrid, HStack, Text } from '@chakra-ui/react';
-import { Trade } from '@/utils/types/trades';
+import { Box, Flex, Text, VStack, HStack, SimpleGrid } from '@chakra-ui/react';
+import { Trade } from '@/db/schema';
+import Card from '../ui/Card';
+import Badge from '../ui/Badge';
+import Button from '../ui/Button';
 import { getFinalPNL, formatHKD, formatPNL, getPNLColorClass } from '@/utils/helpers/pnl-calculator';
 import { formatDateForDisplay, getRelativeTimeString } from '@/utils/helpers/date-helpers';
-import { getDaysToExpiry, calculateHoldDays } from '@/utils/helpers/status-calculator';
-import Card from '@/components/ui/Card';
+import { calculateHoldDays, getDaysToExpiry } from '@/utils/helpers/status-calculator';
 import { StatusBadge, DirectionBadge } from '@/components/ui/Badge';
-import Button from '@/components/ui/Button';
 
 interface TradeCardProps {
   trade: Trade;
@@ -16,11 +17,18 @@ interface TradeCardProps {
   onDelete?: (trade: Trade) => void;
 }
 
+// Helper to parse numeric strings
+function parseNumeric(value: string | number | null | undefined): number {
+  if (value === null || value === undefined) return 0;
+  return typeof value === 'string' ? parseFloat(value) : value;
+}
+
 export default function TradeCard({ trade, onClose, onView, onDelete }: TradeCardProps) {
   const pnl = getFinalPNL(trade);
   const daysToExpiry = getDaysToExpiry(trade.expiry_date);
   const holdDays = calculateHoldDays(trade);
   const isOpen = trade.status === 'Open';
+  const fee = parseNumeric(trade.fee);
 
   return (
     <Card>
@@ -59,7 +67,7 @@ export default function TradeCard({ trade, onClose, onView, onDelete }: TradeCar
         </Box>
         <Box>
           <Text color="fg.muted">Total</Text>
-          <Text color="green.400">{formatHKD(trade.total_premium)}</Text>
+          <Text color="green.400">{formatHKD(trade.total_premium || '0')}</Text>
         </Box>
       </SimpleGrid>
 
@@ -74,10 +82,10 @@ export default function TradeCard({ trade, onClose, onView, onDelete }: TradeCar
             <Text>{holdDays} days held</Text>
           </>
         )}
-        {trade.fee > 0 && (
+        {fee > 0 && (
           <>
             <Text>•</Text>
-            <Text>Fee: {formatHKD(trade.fee)}</Text>
+            <Text>Fee: {formatHKD(fee)}</Text>
           </>
         )}
       </HStack>

@@ -2,7 +2,7 @@
 
 import { useState, FormEvent } from 'react';
 import { Box, SimpleGrid, VStack, Text, Flex } from '@chakra-ui/react';
-import { NewTradeInput, TradeDirection } from '@/utils/types/trades';
+import { NewTradeInput, TradeDirection } from '@/db/schema';
 import { validateTradeInput, sanitizeStockSymbol, parseNumberInput } from '@/utils/helpers/validators';
 import { calculateTotalPremium, DEFAULT_SHARES_PER_CONTRACT } from '@/utils/helpers/pnl-calculator';
 import { formatDateForInput } from '@/utils/helpers/date-helpers';

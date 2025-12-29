@@ -1,8 +1,10 @@
 'use client';
 
-import { Box, Flex } from '@chakra-ui/react';
-import { Trade, TradeFilters } from '@/utils/types/trades';
-import Select from '@/components/ui/Select';
+import { useState, useEffect } from 'react';
+import { Box, Flex, Text, VStack } from '@chakra-ui/react';
+import { Trade, TradeFilters } from '@/db/schema';
+import Select from '../ui/Select';
+import Input from '../ui/Input';
 import Button from '@/components/ui/Button';
 
 interface TradeFiltersProps {

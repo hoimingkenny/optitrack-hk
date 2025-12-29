@@ -1,4 +1,10 @@
-import { Trade, TradeStatus, TradeDirection } from '../types/trades';
+import { Trade, TradeStatus, TradeDirection } from '@/db/schema';
+
+// Helper to parse numeric strings from database
+function parseNumeric(value: string | number | null | undefined): number {
+  if (value === null || value === undefined) return 0;
+  return typeof value === 'string' ? parseFloat(value) : value;
+}
 
 /**
  * Calculate the current status of a trade based on dates and market conditions
@@ -21,9 +27,11 @@ export function calculateTradeStatus(
   }
   
   // Expired - check if exercised or lapsed based on close_stock_price if available
-  const priceToCheck = trade.close_stock_price ?? trade.stock_price;
-  if (priceToCheck !== null && priceToCheck !== undefined) {
-    const isITM = checkIfITM(trade.direction, trade.strike_price, priceToCheck);
+  const priceToCheck = parseNumeric(trade.close_stock_price) || parseNumeric(trade.stock_price);
+  const strikePrice = parseNumeric(trade.strike_price);
+  
+  if (priceToCheck > 0) {
+    const isITM = checkIfITM(trade.direction, strikePrice, priceToCheck);
     if (isITM) {
       return 'Exercised';
     } else {

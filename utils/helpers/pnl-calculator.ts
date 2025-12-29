@@ -1,7 +1,13 @@
-import { Trade, PNLResult, TradeDirection } from '../types/trades';
+import { Trade, PNLResult, TradeDirection } from '@/db/schema';
 
 // HKEX default shares per contract
 export const DEFAULT_SHARES_PER_CONTRACT = 500;
+
+// Helper to parse numeric strings from database
+function parseNumeric(value: string | number | null | undefined): number {
+  if (value === null || value === undefined) return 0;
+  return typeof value === 'string' ? parseFloat(value) : value;
+}
 
 /**
  * Calculate total premium for a trade
@@ -28,9 +34,10 @@ export function isSellDirection(direction: TradeDirection): boolean {
  */
 export function calculateTradePNL(trade: Trade): PNLResult {
   const isSell = isSellDirection(trade.direction);
-  const openFee = trade.fee || 0;
-  const closeFee = trade.close_fee || 0;
+  const openFee = parseNumeric(trade.fee);
+  const closeFee = parseNumeric(trade.close_fee);
   const totalFees = openFee + closeFee;
+  const totalPremium = parseNumeric(trade.total_premium);
   
   // If not closed, return zeros
   if (trade.status === 'Open' || trade.close_premium === null || trade.close_premium === undefined) {
@@ -38,13 +45,14 @@ export function calculateTradePNL(trade: Trade): PNLResult {
       grossPNL: 0,
       netPNL: 0,
       returnPercentage: 0,
-      totalPremiumReceived: isSell ? trade.total_premium : 0,
-      totalPremiumPaid: isSell ? 0 : trade.total_premium,
+      totalPremiumReceived: isSell ? totalPremium : 0,
+      totalPremiumPaid: isSell ? 0 : totalPremium,
       totalFees
     };
   }
   
-  const closeTotalPremium = calculateTotalPremium(trade.close_premium, trade.contracts, trade.shares_per_contract);
+  const closePremium = parseNumeric(trade.close_premium);
+  const closeTotalPremium = calculateTotalPremium(closePremium, trade.contracts, trade.shares_per_contract);
   
   let grossPNL: number;
   let totalPremiumReceived: number;
@@ -52,19 +60,19 @@ export function calculateTradePNL(trade: Trade): PNLResult {
   
   if (isSell) {
     // Sell: Receive premium at open, pay to close
-    grossPNL = trade.total_premium - closeTotalPremium;
-    totalPremiumReceived = trade.total_premium;
+    grossPNL = totalPremium - closeTotalPremium;
+    totalPremiumReceived = totalPremium;
     totalPremiumPaid = closeTotalPremium;
   } else {
     // Buy: Pay premium at open, receive at close
-    grossPNL = closeTotalPremium - trade.total_premium;
+    grossPNL = closeTotalPremium - totalPremium;
     totalPremiumReceived = closeTotalPremium;
-    totalPremiumPaid = trade.total_premium;
+    totalPremiumPaid = totalPremium;
   }
   
   const netPNL = grossPNL - totalFees;
-  const returnPercentage = trade.total_premium > 0 
-    ? (netPNL / trade.total_premium) * 100 
+  const returnPercentage = totalPremium > 0 
+    ? (netPNL / totalPremium) * 100 
     : 0;
   
   return {
@@ -82,28 +90,29 @@ export function calculateTradePNL(trade: Trade): PNLResult {
  */
 export function calculateExpiredPNL(trade: Trade): PNLResult {
   const isSell = isSellDirection(trade.direction);
-  const totalFees = trade.fee || 0;
+  const totalFees = parseNumeric(trade.fee);
+  const totalPremium = parseNumeric(trade.total_premium);
   
   if (trade.status === 'Lapsed') {
     // Option expired worthless
     if (isSell) {
       // Seller keeps full premium
       return {
-        grossPNL: trade.total_premium,
-        netPNL: trade.total_premium - totalFees,
+        grossPNL: totalPremium,
+        netPNL: totalPremium - totalFees,
         returnPercentage: 100,
-        totalPremiumReceived: trade.total_premium,
+        totalPremiumReceived: totalPremium,
         totalPremiumPaid: 0,
         totalFees
       };
     } else {
       // Buyer loses full premium
       return {
-        grossPNL: -trade.total_premium,
-        netPNL: -trade.total_premium - totalFees,
+        grossPNL: -totalPremium,
+        netPNL: -totalPremium - totalFees,
         returnPercentage: -100,
         totalPremiumReceived: 0,
-        totalPremiumPaid: trade.total_premium,
+        totalPremiumPaid: totalPremium,
         totalFees
       };
     }
@@ -114,8 +123,8 @@ export function calculateExpiredPNL(trade: Trade): PNLResult {
     grossPNL: 0,
     netPNL: 0,
     returnPercentage: 0,
-    totalPremiumReceived: isSell ? trade.total_premium : 0,
-    totalPremiumPaid: isSell ? 0 : trade.total_premium,
+    totalPremiumReceived: isSell ? totalPremium : 0,
+    totalPremiumPaid: isSell ? 0 : totalPremium,
     totalFees
   };
 }
@@ -158,8 +167,9 @@ export function formatPNL(pnl: number): string {
 /**
  * Format currency for display (HKD)
  */
-export function formatHKD(amount: number): string {
-  return `HKD ${amount.toLocaleString('en-HK', { 
+export function formatHKD(amount: number | string): string {
+  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+  return `HKD ${num.toLocaleString('en-HK', { 
     minimumFractionDigits: 2, 
     maximumFractionDigits: 2 
   })}`;
