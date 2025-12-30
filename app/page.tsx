@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Box, Container, Flex, Text, VStack, Center, Spinner } from '@chakra-ui/react';
 import { User } from '@supabase/supabase-js';
-import { Trade, NewTradeInput } from '@/db/schema';
+import { OptionWithSummary, CreateOptionWithTradeInput } from '@/db/schema';
 import { 
   supabase, 
   signIn, 
@@ -13,9 +13,9 @@ import {
 import AuthForm from '@/components/auth/AuthForm';
 import DashboardNav from '@/components/layout/DashboardNav';
 import TradeForm from '@/components/trades/TradeForm';
-import PNLSummary from '@/components/trades/PNLSummary';
 import Button from '@/components/ui/Button';
 import { toast } from '@/components/ui/Toast';
+import { formatHKD, formatPNL } from '@/utils/helpers/pnl-calculator';
 
 export default function Home() {
   // Auth state
@@ -25,9 +25,9 @@ export default function Home() {
   const [authError, setAuthError] = useState('');
   const [initialLoading, setInitialLoading] = useState(true);
 
-  // Trade state
-  const [trades, setTrades] = useState<Trade[]>([]);
-  const [tradesLoading, setTradesLoading] = useState(false);
+  // Options state
+  const [options, setOptions] = useState<OptionWithSummary[]>([]);
+  const [optionsLoading, setOptionsLoading] = useState(false);
   const [showNewTradeForm, setShowNewTradeForm] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
 
@@ -54,58 +54,34 @@ export default function Home() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Load trades when user is authenticated
-  const loadTrades = useCallback(async () => {
+  // Load options when user is authenticated
+  const loadOptions = useCallback(async () => {
     if (!user) return;
     
-    setTradesLoading(true);
+    setOptionsLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch('/api/trades', {
+      const response = await fetch('/api/options', {
         headers: {
           'Authorization': `Bearer ${session?.access_token}`,
         },
       });
-      if (!response.ok) throw new Error('Failed to fetch trades');
+      if (!response.ok) throw new Error('Failed to fetch options');
       const data = await response.json();
-      setTrades(data.trades);
+      setOptions(data.options);
     } catch (error) {
-      console.error('Error loading trades:', error);
-      toast.error('Failed to load trades');
+      console.error('Error loading options:', error);
+      toast.error('Failed to load options');
     } finally {
-      setTradesLoading(false);
+      setOptionsLoading(false);
     }
   }, [user]);
 
-  // Check for expired trades on load
-  const checkExpiredTrades = useCallback(async () => {
-    if (!user) return;
-    
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch('/api/trades/check-expired', {
-        headers: {
-          'Authorization': `Bearer ${session?.access_token}`,
-        },
-      });
-      if (!response.ok) throw new Error('Failed to check expired trades');
-      const data = await response.json();
-      
-      if (data.updatedCount > 0) {
-        toast.info(`${data.updatedCount} trade(s) status updated`);
-        await loadTrades();
-      }
-    } catch (error) {
-      console.error('Error checking expired trades:', error);
-    }
-  }, [user, loadTrades]);
-
   useEffect(() => {
     if (user) {
-      loadTrades();
-      checkExpiredTrades();
+      loadOptions();
     }
-  }, [user, loadTrades, checkExpiredTrades]);
+  }, [user, loadOptions]);
 
   // Auth handlers
   const handleAuth = async (email: string, password: string) => {
@@ -131,44 +107,67 @@ export default function Home() {
   const handleSignOut = async () => {
     try {
       await signOut();
-      setTrades([]);
+      setOptions([]);
       toast.info('Signed out successfully');
     } catch {
       toast.error('Failed to sign out');
     }
   };
 
-  // Trade handlers
-  const handleCreateTrade = async (data: NewTradeInput) => {
+  // Trade handlers - Updated to create option with initial trade
+  const handleCreateTrade = async (data: any) => {
     if (!user) return;
     
     setFormLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch('/api/trades', {
+      
+      // Transform old trade format to new option format
+      const optionData: CreateOptionWithTradeInput = {
+        option: {
+          stock_symbol: data.stock_symbol,
+          direction: data.direction,
+          strike_price: data.strike_price,
+          expiry_date: data.expiry_date,
+        },
+        trade: {
+          contracts: data.contracts,
+          premium: data.premium,
+          fee: data.fee,
+          stock_price: data.stock_price,
+          hsi: data.hsi,
+          trade_date: data.trade_date,
+        },
+      };
+      
+      const response = await fetch('/api/options', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session?.access_token}`,
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(optionData),
       });
       
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to create trade');
+        throw new Error(error.error || 'Failed to create option');
       }
       
-      toast.success('Trade opened successfully!');
+      toast.success('Option opened successfully!');
       setShowNewTradeForm(false);
-      await loadTrades();
+      await loadOptions();
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create trade';
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create option';
       toast.error(errorMessage);
     } finally {
       setFormLoading(false);
     }
   };
+
+  // Calculate total PNL from all options
+  const totalPNL = options.reduce((sum, option) => sum + option.total_pnl, 0);
+  const openOptionsCount = options.filter(o => o.status === 'Open').length;
 
   // Loading state
   if (initialLoading) {
@@ -224,7 +223,7 @@ export default function Home() {
               </Text>
             </Box>
             <Button onClick={() => setShowNewTradeForm(true)}>
-              + New Trade
+              + New Option
             </Button>
           </Flex>
 
@@ -239,26 +238,78 @@ export default function Home() {
             </Box>
           )}
 
-          {/* PNL Summary */}
-          {tradesLoading ? (
+          {/* Summary Cards */}
+          {optionsLoading ? (
             <Center py={12}>
               <VStack gap={2}>
                 <Spinner size="lg" color="brand.500" borderWidth="4px" />
-                <Text color="fg.muted">Loading trades...</Text>
+                <Text color="fg.muted">Loading options...</Text>
               </VStack>
             </Center>
-          ) : trades.length > 0 ? (
+          ) : options.length > 0 ? (
             <Box mb={6}>
-              <PNLSummary trades={trades} />
+              <Flex gap={4} flexWrap="wrap">
+                {/* Total Options */}
+                <Box 
+                  flex="1" 
+                  minW="200px"
+                  bg="bg.surface" 
+                  p={6} 
+                  borderRadius="xl" 
+                  borderWidth="1px" 
+                  borderColor="border.default"
+                >
+                  <Text fontSize="sm" color="fg.muted" mb={2}>Total Options</Text>
+                  <Text fontSize="3xl" fontWeight="bold" color="fg.default">
+                    {options.length}
+                  </Text>
+                </Box>
+
+                {/* Open Positions */}
+                <Box 
+                  flex="1" 
+                  minW="200px"
+                  bg="bg.surface" 
+                  p={6} 
+                  borderRadius="xl" 
+                  borderWidth="1px" 
+                  borderColor="border.default"
+                >
+                  <Text fontSize="sm" color="fg.muted" mb={2}>Open Positions</Text>
+                  <Text fontSize="3xl" fontWeight="bold" color="blue.400">
+                    {openOptionsCount}
+                  </Text>
+                </Box>
+
+                {/* Total PNL */}
+                <Box 
+                  flex="1" 
+                  minW="200px"
+                  bg="bg.surface" 
+                  p={6} 
+                  borderRadius="xl" 
+                  borderWidth="1px" 
+                  borderColor="border.default"
+                >
+                  <Text fontSize="sm" color="fg.muted" mb={2}>Total PNL</Text>
+                  <Text 
+                    fontSize="3xl" 
+                    fontWeight="bold" 
+                    color={totalPNL > 0 ? 'green.400' : totalPNL < 0 ? 'red.400' : 'fg.default'}
+                  >
+                    {formatPNL(totalPNL)}
+                  </Text>
+                </Box>
+              </Flex>
             </Box>
           ) : (
             <Center py={12} bg="bg.surface" borderRadius="xl" borderWidth="1px" borderColor="border.default">
               <VStack gap={4}>
                 <Text color="fg.muted" mb={0}>
-                  No trades yet. Create your first trade to get started!
+                  No options yet. Create your first option to get started!
                 </Text>
                 <Button onClick={() => setShowNewTradeForm(true)}>
-                  Create First Trade
+                  Create First Option
                 </Button>
               </VStack>
             </Center>

@@ -2,14 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { Box, Flex, Text, VStack } from '@chakra-ui/react';
-import { Trade, TradeFilters } from '@/db/schema';
+import { OptionFilters } from '@/db/schema';
 import Select from '../ui/Select';
 import Input from '../ui/Input';
 import Button from '@/components/ui/Button';
 
 interface TradeFiltersProps {
-  filters: TradeFilters;
-  onFilterChange: (filters: TradeFilters) => void;
+  filters: OptionFilters;
+  onFilterChange: (filters: OptionFilters) => void;
   stockSymbols: string[];
 }
 
@@ -40,7 +40,7 @@ export default function TradeFiltersComponent({
     ...stockSymbols.map(s => ({ value: s, label: s })),
   ];
 
-  const handleChange = (key: keyof TradeFilters, value: string) => {
+  const handleChange = (key: keyof OptionFilters, value: string) => {
     onFilterChange({
       ...filters,
       [key]: value === 'ALL' || value === '' ? undefined : value,
@@ -104,20 +104,4 @@ export default function TradeFiltersComponent({
       )}
     </Flex>
   );
-}
-
-// Helper to apply filters to trades
-export function applyTradeFilters(trades: Trade[], filters: TradeFilters): Trade[] {
-  return trades.filter(trade => {
-    if (filters.stock_symbol && trade.stock_symbol !== filters.stock_symbol) {
-      return false;
-    }
-    if (filters.status && filters.status !== 'ALL' && trade.status !== filters.status) {
-      return false;
-    }
-    if (filters.direction && filters.direction !== 'ALL' && trade.direction !== filters.direction) {
-      return false;
-    }
-    return true;
-  });
 }

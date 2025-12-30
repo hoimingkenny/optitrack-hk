@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, numeric, integer, timestamp, date } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, numeric, integer, timestamp, date, unique } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 // Trade direction enum values
@@ -9,71 +9,125 @@ export type TradeDirection = typeof tradeDirections[number];
 export const tradeStatuses = ['Open', 'Closed', 'Expired', 'Exercised', 'Lapsed'] as const;
 export type TradeStatus = typeof tradeStatuses[number];
 
-// Options trades table schema - matching actual Supabase database
-export const optionsTrades = pgTable('options_trades', {
+// Trade type enum values
+export const tradeTypes = ['OPEN', 'ADD', 'REDUCE', 'CLOSE'] as const;
+export type TradeType = typeof tradeTypes[number];
+
+// ============================================================================
+// Options Table (Parent)
+// ============================================================================
+
+export const options = pgTable('options', {
   id: uuid('id').primaryKey().defaultRandom(),
   user_id: uuid('user_id').notNull(),
   
-  // Trade Details
+  // Option Contract Details
   stock_symbol: text('stock_symbol').notNull(),
   direction: text('direction').notNull().$type<TradeDirection>(),
   strike_price: numeric('strike_price').notNull(),
   expiry_date: date('expiry_date').notNull(),
   
-  // Position Details
-  premium: numeric('premium').notNull(),
-  contracts: integer('contracts').notNull(),
-  shares_per_contract: integer('shares_per_contract').notNull().default(500),
-  fee: numeric('fee').notNull().default('0'),
-  total_premium: numeric('total_premium').generatedAlwaysAs(
-    sql`premium * contracts * shares_per_contract`
-  ),
-  stock_price: numeric('stock_price').notNull(),
-  hsi: numeric('hsi').notNull(),
-  trade_date: timestamp('trade_date', { withTimezone: true }).notNull().defaultNow(),
-  
-  // Closing Details (nullable until closed)
-  close_premium: numeric('close_premium'),
-  close_fee: numeric('close_fee').default('0'),
-  close_stock_price: numeric('close_stock_price'),
-  close_hsi: numeric('close_hsi'),
-  
-  // Status
+  // Position Status
   status: text('status').notNull().default('Open').$type<TradeStatus>(),
   
-  // Timestamps
+  // Metadata
+  created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  // Ensure unique option per user
+  uniqueOptionPerUser: unique('unique_option_per_user').on(
+    table.user_id,
+    table.stock_symbol,
+    table.direction,
+    table.strike_price,
+    table.expiry_date
+  ),
+}));
+
+// ============================================================================
+// Trades Table (Child)
+// ============================================================================
+
+export const trades = pgTable('trades', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  option_id: uuid('option_id').notNull().references(() => options.id, { onDelete: 'cascade' }),
+  user_id: uuid('user_id').notNull(),
+  
+  // Trade Details
+  trade_type: text('trade_type').notNull().$type<TradeType>(),
+  trade_date: timestamp('trade_date', { withTimezone: true }).notNull().defaultNow(),
+  
+  // Position Details
+  contracts: integer('contracts').notNull(),
+  premium: numeric('premium').notNull(),
+  fee: numeric('fee').notNull().default('0'),
+  
+  // Market Context
+  stock_price: numeric('stock_price').notNull(),
+  hsi: numeric('hsi').notNull(),
+  
+  // Optional
+  notes: text('notes'),
+  
+  // Metadata
   created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-// Inferred types from schema
-export type Trade = typeof optionsTrades.$inferSelect;
-export type NewTrade = typeof optionsTrades.$inferInsert;
+// ============================================================================
+// Inferred Types
+// ============================================================================
 
-// Input types for API
-export interface NewTradeInput {
+export type Option = typeof options.$inferSelect;
+export type NewOption = typeof options.$inferInsert;
+export type Trade = typeof trades.$inferSelect;
+export type NewTrade = typeof trades.$inferInsert;
+
+// ============================================================================
+// Input Types for API
+// ============================================================================
+
+export interface CreateOptionInput {
   stock_symbol: string;
   direction: TradeDirection;
   strike_price: number;
   expiry_date: string;
-  premium: number;
+}
+
+export interface CreateTradeInput {
+  trade_type: TradeType;
   contracts: number;
-  shares_per_contract?: number;
+  premium: number;
   fee?: number;
   stock_price: number;
   hsi: number;
   trade_date?: string;
+  notes?: string;
 }
 
-export interface CloseTradeInput {
-  close_premium: number;
-  close_fee?: number;
-  close_stock_price?: number;
-  close_hsi?: number;
+export interface CreateOptionWithTradeInput {
+  option: CreateOptionInput;
+  trade: Omit<CreateTradeInput, 'trade_type'> & { trade_type?: 'OPEN' };
 }
 
-// Additional types for compatibility
-export interface TradeFilters {
+export interface UpdateOptionInput {
+  status?: TradeStatus;
+}
+
+export interface UpdateTradeInput {
+  contracts?: number;
+  premium?: number;
+  fee?: number;
+  stock_price?: number;
+  hsi?: number;
+  notes?: string;
+}
+
+// ============================================================================
+// Filter & Summary Types
+// ============================================================================
+
+export interface OptionFilters {
   stock_symbol?: string;
   status?: TradeStatus | 'ALL';
   direction?: TradeDirection | 'ALL';
@@ -90,30 +144,38 @@ export interface PNLResult {
   totalFees: number;
 }
 
-export interface StockSummary {
-  stock_symbol: string;
+export interface OptionPNL {
+  totalOpened: number;
+  totalClosed: number;
+  netContracts: number;
+  avgEntryPremium: number;
+  avgExitPremium: number;
+  totalFees: number;
+  realizedPNL: number;
+  unrealizedPNL: number;
+  grossPNL: number;
+  netPNL: number;
+  returnPercentage: number;
+}
+
+export interface OptionWithSummary extends Option {
+  total_contracts: number;
+  net_contracts: number;
+  total_pnl: number;
+  trades_count: number;
+}
+
+export interface OptionWithTrades extends Option {
   trades: Trade[];
-  totalPNL: number;
-  winRate: number;
-  avgHoldDays: number;
-  openCount: number;
-  closedCount: number;
-  expiredCount: number;
-  exercisedCount: number;
-  lapsedCount: number;
+  summary: OptionPNL;
 }
 
-export interface TradeSummary {
-  totalTrades: number;
-  openTrades: number;
-  closedTrades: number;
-  totalPNL: number;
-  winRate: number;
-  avgHoldDays: number;
-}
+// ============================================================================
+// Helper Functions
+// ============================================================================
 
-// Generate unique trade ID
-export function generateTradeId(
+// Generate unique option ID
+export function generateOptionId(
   symbol: string,
   strike: number,
   expiry: string,
