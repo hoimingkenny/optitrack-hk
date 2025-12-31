@@ -28,14 +28,14 @@ export default function OptionsTable({ options }: OptionsTableProps) {
     >
       <Table.Root size="sm" variant="outline">
         <Table.Header>
-          <Table.Row>
-            <Table.ColumnHeader>Symbol</Table.ColumnHeader>
-            <Table.ColumnHeader>Direction</Table.ColumnHeader>
-            <Table.ColumnHeader textAlign="right">Strike Price</Table.ColumnHeader>
-            <Table.ColumnHeader>Expiry</Table.ColumnHeader>
-            <Table.ColumnHeader textAlign="right">Contracts</Table.ColumnHeader>
-            <Table.ColumnHeader textAlign="right">Total PNL</Table.ColumnHeader>
-            <Table.ColumnHeader>Status</Table.ColumnHeader>
+          <Table.Row height="2.75rem">
+            <Table.ColumnHeader textAlign="center">Symbol</Table.ColumnHeader>
+            <Table.ColumnHeader textAlign="center">Direction</Table.ColumnHeader>
+            <Table.ColumnHeader textAlign="center">Strike Price</Table.ColumnHeader>
+            <Table.ColumnHeader textAlign="center">Expiry</Table.ColumnHeader>
+            <Table.ColumnHeader textAlign="center">Contracts</Table.ColumnHeader>
+            <Table.ColumnHeader textAlign="center">Total PNL</Table.ColumnHeader>
+            <Table.ColumnHeader textAlign="center">Status</Table.ColumnHeader>
           </Table.Row>
         </Table.Header>
         <Table.Body>
@@ -45,30 +45,31 @@ export default function OptionsTable({ options }: OptionsTableProps) {
             return (
               <Table.Row 
                 key={option.id}
+                height="2.75rem"
                 onClick={() => handleRowClick(option.id)}
                 cursor="pointer"
                 _hover={{ bg: 'bg.subtle' }}
                 transition="background 0.2s"
               >
-                <Table.Cell fontWeight="medium" color="fg.default">
+                <Table.Cell textAlign="center" fontWeight="medium" color="fg.default">
                   {option.stock_symbol}
                 </Table.Cell>
-                <Table.Cell>
+                <Table.Cell textAlign="center">
                   <DirectionBadge direction={option.direction} />
                 </Table.Cell>
-                <Table.Cell textAlign="right" color="fg.default">
+                <Table.Cell textAlign="center" color="fg.default">
                   {formatHKD(option.strike_price)}
                 </Table.Cell>
-                <Table.Cell color="fg.muted">
+                <Table.Cell textAlign="center" color="fg.muted">
                   {formatDateForDisplay(option.expiry_date)}
                 </Table.Cell>
-                <Table.Cell textAlign="right" color="fg.default">
+                <Table.Cell textAlign="center" color="fg.default">
                   {option.net_contracts}
                 </Table.Cell>
-                <Table.Cell textAlign="right" fontWeight="medium" color={pnlColor}>
+                <Table.Cell textAlign="center" fontWeight="medium" color={pnlColor}>
                   {formatPNL(option.total_pnl)}
                 </Table.Cell>
-                <Table.Cell>
+                <Table.Cell textAlign="center">
                   <StatusBadge status={option.status} />
                 </Table.Cell>
               </Table.Row>
