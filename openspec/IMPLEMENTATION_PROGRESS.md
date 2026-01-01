@@ -2,6 +2,12 @@
 
 ## ✅ Completed - Full MVP Implementation
 
+### 🔄 Recently Completed (Archived)
+- **Database Refactor**: Replaced `stock_symbol` with `stock_id` foreign key referencing `stocks` table.
+- **Drizzle ORM Integration**: Migrated from manual Supabase calls to Drizzle ORM.
+- **Chakra UI v3 Migration**: Updated UI components to Chakra UI v3.
+- **Option-Centric Refactor**: Restructured database to group trades under options.
+
 ### Core Features Implemented
 
 #### 1. **User Authentication**

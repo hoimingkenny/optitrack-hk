@@ -14,6 +14,23 @@ export const tradeTypes = ['OPEN', 'ADD', 'REDUCE', 'CLOSE'] as const;
 export type TradeType = typeof tradeTypes[number];
 
 // ============================================================================
+// Stocks Table
+// ============================================================================
+
+export const stocks = pgTable('stocks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  
+  // Stock Information
+  name: text('name').notNull(),
+  symbol: text('symbol').notNull().unique(),
+  shares_per_contract: integer('shares_per_contract').notNull().default(500),
+  
+  // Metadata
+  created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ============================================================================
 // Options Table (Parent)
 // ============================================================================
 
@@ -22,7 +39,7 @@ export const options = pgTable('options', {
   user_id: uuid('user_id').notNull(),
   
   // Option Contract Details
-  stock_symbol: text('stock_symbol').notNull(),
+  stock_id: uuid('stock_id').notNull().references(() => stocks.id, { onDelete: 'restrict' }),
   direction: text('direction').notNull().$type<TradeDirection>(),
   strike_price: numeric('strike_price').notNull(),
   expiry_date: date('expiry_date').notNull(),
@@ -37,7 +54,7 @@ export const options = pgTable('options', {
   // Ensure unique option per user
   uniqueOptionPerUser: unique('unique_option_per_user').on(
     table.user_id,
-    table.stock_symbol,
+    table.stock_id,
     table.direction,
     table.strike_price,
     table.expiry_date
@@ -82,10 +99,23 @@ export type Option = typeof options.$inferSelect;
 export type NewOption = typeof options.$inferInsert;
 export type Trade = typeof trades.$inferSelect;
 export type NewTrade = typeof trades.$inferInsert;
+export type Stock = typeof stocks.$inferSelect;
+export type NewStock = typeof stocks.$inferInsert;
 
 // ============================================================================
 // Input Types for API
 // ============================================================================
+
+export interface CreateStockInput {
+  name: string;
+  symbol: string;
+  shares_per_contract?: number;
+}
+
+export interface UpdateStockInput {
+  name?: string;
+  shares_per_contract?: number;
+}
 
 export interface CreateOptionInput {
   stock_symbol: string;
@@ -159,6 +189,7 @@ export interface OptionPNL {
 }
 
 export interface OptionWithSummary extends Option {
+  stock_symbol: string;
   total_contracts: number;
   net_contracts: number;
   total_pnl: number;
@@ -166,6 +197,7 @@ export interface OptionWithSummary extends Option {
 }
 
 export interface OptionWithTrades extends Option {
+  stock_symbol: string;
   trades: Trade[];
   summary: OptionPNL;
 }
