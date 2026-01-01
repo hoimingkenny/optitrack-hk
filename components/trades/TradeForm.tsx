@@ -168,7 +168,6 @@ export default function TradeForm({ onSubmit, onCancel, isLoading = false }: Tra
               <Input
                 label="Expiry Date"
                 type="date"
-                min={formatDateForInput(new Date())}
                 value={formData.expiry_date}
                 onChange={(e) => handleChange('expiry_date', e.target.value)}
                 error={errors.expiry_date}

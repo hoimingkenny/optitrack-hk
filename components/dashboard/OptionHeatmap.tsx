@@ -16,13 +16,19 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
     years.add(currentYear);
 
     options.forEach(option => {
+      // Add year from creation date
       const startYear = new Date(option.created_at).getFullYear();
       years.add(startYear);
       
+      // Add year from update date (if closed/expired)
       if (option.status !== 'Open') {
         const endYear = new Date(option.updated_at).getFullYear();
         years.add(endYear);
       }
+
+      // Add year from expiry date (important for the Expiration Heatmap)
+      const expiryYear = new Date(option.expiry_date).getFullYear();
+      years.add(expiryYear);
     });
 
     return Array.from(years).sort((a, b) => b - a);
@@ -160,16 +166,18 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
                 {/* Month Labels */}
                 <Flex gap={1} mb={1} h="15px">
                   {weeks.map((week, index) => {
-                    const firstDay = week.find(d => d !== null);
-                    if (!firstDay) return <Box key={index} w="12px" />;
+                    const firstDayInWeek = week.find(d => d !== null);
+                    if (!firstDayInWeek) return <Box key={index} w="12px" />;
 
-                    // Check if this week contains the 1st of a month OR if it's the very first week
-                    const containsFirstOfMonth = week.some(d => d && d.getDate() === 1);
-                    const isFirstWeek = index === 0;
+                    // Find if the 1st of any month falls in this week
+                    const monthStartingInWeek = week.find(d => d && d.getDate() === 1);
                     
-                    let showLabel = false;
-                    if (containsFirstOfMonth) showLabel = true;
-                    if (isFirstWeek) showLabel = true;
+                    // Show label if it's the first week of the year OR if a month starts in this week
+                    const isFirstWeek = index === 0;
+                    const showLabel = isFirstWeek || monthStartingInWeek;
+                    
+                    // Use the month of the 1st day if found, otherwise the first day of the week
+                    const labelDate = monthStartingInWeek || firstDayInWeek;
                     
                     return (
                       <Box key={index} w="12px" overflow="visible" position="relative">
@@ -181,7 +189,7 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
                             whiteSpace="nowrap"
                             top="-4px"
                           >
-                            {firstDay.toLocaleString('default', { month: 'short' })}
+                            {labelDate.toLocaleString('default', { month: 'short' })}
                           </Text>
                         )}
                       </Box>
