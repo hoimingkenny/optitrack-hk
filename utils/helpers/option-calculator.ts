@@ -13,7 +13,7 @@ function parseNumeric(value: string | number | null | undefined): number {
  * Check if direction is a sell direction
  */
 export function isSellDirection(direction: TradeDirection): boolean {
-  return direction === 'Sell Put' || direction === 'Sell Call';
+  return direction === 'Sell';
 }
 
 /**
@@ -121,10 +121,10 @@ export function calculateRealizedPNL(
   let pnl: number;
   if (isSell) {
     // Seller: Receive premium at open, pay to close
-    pnl = (avgEntry - avgExit) * closedContracts * DEFAULT_SHARES_PER_CONTRACT;
+    pnl = (avgEntry - avgExit) * closedContracts * (parseNumeric(trades[0]?.shares_per_contract) || DEFAULT_SHARES_PER_CONTRACT);
   } else {
     // Buyer: Pay premium at open, receive at close
-    pnl = (avgExit - avgEntry) * closedContracts * DEFAULT_SHARES_PER_CONTRACT;
+    pnl = (avgExit - avgEntry) * closedContracts * (parseNumeric(trades[0]?.shares_per_contract) || DEFAULT_SHARES_PER_CONTRACT);
   }
   
   return pnl;
@@ -148,6 +148,7 @@ export function calculateUnrealizedPNL(
 
 /**
  * Calculate complete PNL summary for an option
+ * PNL = sum(premium * contracts * shares) for all trades - total fees
  */
 export function calculateOptionPNL(
   option: Option,
@@ -159,13 +160,29 @@ export function calculateOptionPNL(
   const avgEntryPremium = calculateAverageEntryPremium(trades);
   const avgExitPremium = calculateAverageExitPremium(trades);
   const totalFees = calculateTotalFees(trades);
-  const realizedPNL = calculateRealizedPNL(option, trades);
-  const unrealizedPNL = calculateUnrealizedPNL(option, trades);
-  const grossPNL = realizedPNL + unrealizedPNL;
+  
+  // Calculate PNL as sum of all (premium * contracts * shares) - fees
+  // For Sell options: Received (+) at open, Paid (-) at close
+  // For Buy options: Paid (-) at open, Received (+) at close
+  const isSell = isSellDirection(option.direction);
+  
+  const grossPNL = trades.reduce((sum, trade) => {
+    const premium = parseNumeric(trade.premium);
+    const contracts = parseNumeric(trade.contracts);
+    const shares = parseNumeric(trade.shares_per_contract) || DEFAULT_SHARES_PER_CONTRACT;
+    const amount = premium * contracts * shares;
+    
+    if (trade.trade_type === 'OPEN' || trade.trade_type === 'ADD') {
+      return sum + (isSell ? amount : -amount);
+    } else {
+      return sum + (isSell ? -amount : amount);
+    }
+  }, 0);
+
   const netPNL = grossPNL - totalFees;
   
   // Calculate return percentage based on total premium invested
-  const totalInvested = avgEntryPremium * totalOpened * DEFAULT_SHARES_PER_CONTRACT;
+  const totalInvested = avgEntryPremium * totalOpened * (parseNumeric(trades[0]?.shares_per_contract) || DEFAULT_SHARES_PER_CONTRACT);
   const returnPercentage = totalInvested > 0 ? (netPNL / totalInvested) * 100 : 0;
   
   return {
@@ -175,8 +192,8 @@ export function calculateOptionPNL(
     avgEntryPremium,
     avgExitPremium,
     totalFees,
-    realizedPNL,
-    unrealizedPNL,
+    realizedPNL: grossPNL, // Realized PNL in this simple model is the running total
+    unrealizedPNL: 0,
     grossPNL,
     netPNL,
     returnPercentage,
@@ -186,9 +203,10 @@ export function calculateOptionPNL(
 /**
  * Format option description (for display)
  */
-export function formatOptionDescription(option: Option): string {
+export function formatOptionDescription(option: Option & { stock_symbol?: string }): string {
   const strike = parseNumeric(option.strike_price);
-  return `${option.stock_symbol} ${option.direction} HKD ${strike.toFixed(2)}`;
+  const symbol = option.stock_symbol || 'Unknown';
+  return `${symbol} ${option.direction} HKD ${strike.toFixed(2)}`;
 }
 
 /**

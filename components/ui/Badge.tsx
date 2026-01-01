@@ -78,10 +78,8 @@ interface DirectionBadgeProps {
 }
 
 const directionStyles: Record<string, { bg: string; color: string; borderColor: string }> = {
-  'Sell Put': { bg: 'purple.500/20', color: 'purple.400', borderColor: 'purple.500/30' },
-  'Sell Call': { bg: 'teal.500/20', color: 'teal.400', borderColor: 'teal.500/30' },
-  'Buy Put': { bg: 'pink.500/20', color: 'pink.400', borderColor: 'pink.500/30' },
-  'Buy Call': { bg: 'cyan.500/20', color: 'cyan.400', borderColor: 'cyan.500/30' },
+  'Sell': { bg: 'red.500/20', color: 'red.400', borderColor: 'red.500/30' },
+  'Buy': { bg: 'green.500/20', color: 'green.400', borderColor: 'green.500/30' },
 };
 
 export function DirectionBadge({ direction }: DirectionBadgeProps) {
@@ -100,6 +98,36 @@ export function DirectionBadge({ direction }: DirectionBadgeProps) {
       {...styles}
     >
       {direction}
+    </ChakraBadge>
+  );
+}
+
+// Pre-styled badges for option type
+interface OptionTypeBadgeProps {
+  type: string;
+}
+
+const optionTypeStyles: Record<string, { bg: string; color: string; borderColor: string }> = {
+  'Call': { bg: 'cyan.500/20', color: 'cyan.400', borderColor: 'cyan.500/30' },
+  'Put': { bg: 'purple.500/20', color: 'purple.400', borderColor: 'purple.500/30' },
+};
+
+export function OptionTypeBadge({ type }: OptionTypeBadgeProps) {
+  const styles = optionTypeStyles[type] || {};
+
+  return (
+    <ChakraBadge
+      display="inline-flex"
+      alignItems="center"
+      px={2.5}
+      py={0.5}
+      borderRadius="full"
+      fontSize="xs"
+      fontWeight="medium"
+      borderWidth="1px"
+      {...styles}
+    >
+      {type}
     </ChakraBadge>
   );
 }

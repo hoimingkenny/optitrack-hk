@@ -46,6 +46,7 @@ export async function createTrade(
       trade_type: tradeData.trade_type,
       contracts: tradeData.contracts,
       premium: tradeData.premium.toString(),
+      shares_per_contract: tradeData.shares_per_contract ?? 500,
       fee: tradeData.fee?.toString() ?? '0',
       stock_price: tradeData.stock_price.toString(),
       hsi: tradeData.hsi.toString(),
@@ -117,6 +118,7 @@ export async function updateTrade(
   if (updates.fee !== undefined) updateData.fee = updates.fee.toString();
   if (updates.stock_price !== undefined) updateData.stock_price = updates.stock_price.toString();
   if (updates.hsi !== undefined) updateData.hsi = updates.hsi.toString();
+  if (updates.trade_date !== undefined) updateData.trade_date = new Date(updates.trade_date);
   if (updates.notes !== undefined) updateData.notes = updates.notes;
 
   const [updated] = await db

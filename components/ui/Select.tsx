@@ -26,7 +26,7 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
     const selectId = id || label?.toLowerCase().replace(/\s/g, '-');
 
     return (
-      <Field.Root invalid={!!error} required={required}>
+      <Field.Root invalid={!!error} required={required} w="full">
         {label && (
           <Field.Label htmlFor={selectId} fontSize="sm" fontWeight="medium" color="fg.muted" mb={1.5}>
             {label}

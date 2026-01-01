@@ -9,6 +9,8 @@ import {
   DialogTitle,
   DialogCloseTrigger,
   DialogBackdrop,
+  Portal,
+  Box,
 } from '@chakra-ui/react';
 import { ReactNode } from 'react';
 import Button from './Button';
@@ -35,57 +37,73 @@ export default function Modal({ isOpen, onClose, title, children, footer, size =
       open={isOpen}
       onOpenChange={(details) => !details.open && onClose()}
       size={sizeMap[size]}
-      placement="center"
-      motionPreset="slide-in-bottom"
     >
-      <DialogBackdrop bg="blackAlpha.700" backdropFilter="blur(4px)" />
-      <DialogContent
-        bg="bg.surface"
-        borderWidth="1px"
-        borderColor="border.default"
-        borderRadius="xl"
-        shadow="2xl"
-      >
-        <DialogHeader
+      <Portal>
+        <DialogBackdrop bg="blackAlpha.700" backdropFilter="blur(4px)" zIndex="9998" />
+        <Box
+          position="fixed"
+          top="0"
+          left="0"
+          width="100vw"
+          height="100vh"
           display="flex"
           alignItems="center"
-          justifyContent="space-between"
-          p={4}
-          borderBottomWidth="1px"
-          borderColor="border.default"
+          justifyContent="center"
+          zIndex="9999"
+          pointerEvents="none"
         >
-          <DialogTitle fontSize="lg" fontWeight="semibold" color="fg.default">
-            {title}
-          </DialogTitle>
-          <DialogCloseTrigger
-            position="relative"
-            top="0"
-            right="0"
-            p={1}
-            color="fg.muted"
-            _hover={{ color: 'fg.default', bg: 'bg.muted' }}
-            borderRadius="lg"
-          />
-        </DialogHeader>
-
-        <DialogBody p={4} maxH="70vh" overflowY="auto">
-          {children}
-        </DialogBody>
-
-        {footer && (
-          <DialogFooter
-            display="flex"
-            alignItems="center"
-            justifyContent="flex-end"
-            gap={3}
-            p={4}
-            borderTopWidth="1px"
+          <DialogContent
+            bg="bg.surface"
+            borderWidth="1px"
             borderColor="border.default"
+            borderRadius="xl"
+            shadow="2xl"
+            pointerEvents="auto"
+            maxW={size === 'sm' ? 'sm' : size === 'md' ? 'md' : size === 'lg' ? 'lg' : 'xl'}
+            w="full"
           >
-            {footer}
-          </DialogFooter>
-        )}
-      </DialogContent>
+            <DialogHeader
+              display="flex"
+              alignItems="center"
+              justifyContent="space-between"
+              p={4}
+              borderBottomWidth="1px"
+              borderColor="border.default"
+            >
+              <DialogTitle fontSize="lg" fontWeight="semibold" color="fg.default">
+                {title}
+              </DialogTitle>
+              <DialogCloseTrigger
+                position="relative"
+                top="0"
+                right="0"
+                p={1}
+                color="fg.muted"
+                _hover={{ color: 'fg.default', bg: 'bg.muted' }}
+                borderRadius="lg"
+              />
+            </DialogHeader>
+
+            <DialogBody p={4} maxH="70vh" overflowY="auto">
+              {children}
+            </DialogBody>
+
+            {footer && (
+              <DialogFooter
+                display="flex"
+                alignItems="center"
+                justifyContent="flex-end"
+                gap={3}
+                p={4}
+                borderTopWidth="1px"
+                borderColor="border.default"
+              >
+                {footer}
+              </DialogFooter>
+            )}
+          </DialogContent>
+        </Box>
+      </Portal>
     </DialogRoot>
   );
 }

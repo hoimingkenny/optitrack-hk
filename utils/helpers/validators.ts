@@ -1,11 +1,12 @@
-import { NewTradeInput, TradeDirection } from '../types/trades';
+import { NewTradeInput, TradeDirection, OptionType } from '../types/trades';
 
 export interface ValidationError {
   field: string;
   message: string;
 }
 
-const VALID_DIRECTIONS: TradeDirection[] = ['Sell Put', 'Sell Call', 'Buy Put', 'Buy Call'];
+const VALID_DIRECTIONS: TradeDirection[] = ['Buy', 'Sell'];
+const VALID_OPTION_TYPES: OptionType[] = ['Call', 'Put'];
 
 /**
  * Validate new trade input
@@ -25,6 +26,13 @@ export function validateTradeInput(input: Partial<NewTradeInput>): ValidationErr
     errors.push({ field: 'direction', message: 'Trade direction is required' });
   } else if (!VALID_DIRECTIONS.includes(input.direction)) {
     errors.push({ field: 'direction', message: 'Invalid trade direction' });
+  }
+
+  // Option Type
+  if (!input.option_type) {
+    errors.push({ field: 'option_type', message: 'Option type is required' });
+  } else if (!VALID_OPTION_TYPES.includes(input.option_type)) {
+    errors.push({ field: 'option_type', message: 'Invalid option type' });
   }
 
   // Strike price
@@ -79,6 +87,20 @@ export function validateTradeInput(input: Partial<NewTradeInput>): ValidationErr
     errors.push({ field: 'hsi', message: 'HSI must be greater than 0' });
   }
 
+  // Trade Date
+  if (input.trade_date === undefined || input.trade_date === null || input.trade_date === '') {
+    // It's optional in type but we want to ensure it's valid if we are using it from the form
+    // If the form provides it, we should check it.
+    // But if it's optional, maybe we skip.
+    // However, for the "Add New Option" form, we want it.
+    // Let's rely on the form's required attribute for existence, 
+    // but here we can check if it's a valid date string if present.
+  }
+  
+  if (input.trade_date && isNaN(Date.parse(input.trade_date))) {
+    errors.push({ field: 'trade_date', message: 'Invalid trade date' });
+  }
+
   return errors;
 }
 
@@ -109,10 +131,10 @@ export function sanitizeStockSymbol(symbol: string): string {
   if (!clean.endsWith('.HK')) {
     clean = clean + '.HK';
   }
-  // Pad to 5 digits if needed
+  // Pad to 4 digits if needed (HK stocks are at least 4 digits)
   const match = clean.match(/^(\d+)\.HK$/);
   if (match) {
-    const code = match[1].padStart(5, '0');
+    const code = match[1].padStart(4, '0');
     return `${code}.HK`;
   }
   return clean;
@@ -124,7 +146,7 @@ export function sanitizeStockSymbol(symbol: string): string {
 export function formatStockSymbol(symbol: string): string {
   const match = symbol.match(/^(\d{4,5})\.HK$/i);
   if (match) {
-    const code = match[1].padStart(5, '0');
+    const code = match[1].padStart(4, '0');
     return `${code}.HK`;
   }
   return symbol;

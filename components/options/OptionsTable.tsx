@@ -2,9 +2,9 @@
 
 import { Table, Box } from '@chakra-ui/react';
 import { OptionWithSummary } from '@/db/schema';
-import { DirectionBadge, StatusBadge } from '@/components/ui/Badge';
+import { DirectionBadge, StatusBadge, OptionTypeBadge } from '@/components/ui/Badge';
 import { formatHKD, formatPNL } from '@/utils/helpers/pnl-calculator';
-import { formatDateForDisplay } from '@/utils/helpers/date-helpers';
+import { formatDateForDisplay, formatDateToYYYYMMDD } from '@/utils/helpers/date-helpers';
 import { useRouter } from 'next/navigation';
 
 interface OptionsTableProps {
@@ -29,18 +29,18 @@ export default function OptionsTable({ options }: OptionsTableProps) {
       <Table.Root size="sm" variant="outline">
         <Table.Header>
           <Table.Row height="2.75rem">
-            <Table.ColumnHeader textAlign="center">Symbol</Table.ColumnHeader>
+            <Table.ColumnHeader textAlign="center">Option Name</Table.ColumnHeader>
             <Table.ColumnHeader textAlign="center">Direction</Table.ColumnHeader>
-            <Table.ColumnHeader textAlign="center">Strike Price</Table.ColumnHeader>
-            <Table.ColumnHeader textAlign="center">Expiry</Table.ColumnHeader>
-            <Table.ColumnHeader textAlign="center">Contracts</Table.ColumnHeader>
-            <Table.ColumnHeader textAlign="center">Total PNL</Table.ColumnHeader>
+            <Table.ColumnHeader textAlign="center">Net contract</Table.ColumnHeader>
+            <Table.ColumnHeader textAlign="center">Net PnL</Table.ColumnHeader>
             <Table.ColumnHeader textAlign="center">Status</Table.ColumnHeader>
           </Table.Row>
         </Table.Header>
         <Table.Body>
           {options.map((option) => {
             const pnlColor = option.total_pnl > 0 ? 'green.400' : option.total_pnl < 0 ? 'red.400' : 'fg.muted';
+            const strikePrice = typeof option.strike_price === 'string' ? parseFloat(option.strike_price) : option.strike_price;
+            const optionName = `${option.stock_symbol} ${formatDateToYYYYMMDD(option.expiry_date)} ${strikePrice.toFixed(2)} ${option.option_type}`;
             
             return (
               <Table.Row 
@@ -52,16 +52,10 @@ export default function OptionsTable({ options }: OptionsTableProps) {
                 transition="background 0.2s"
               >
                 <Table.Cell textAlign="center" fontWeight="medium" color="fg.default">
-                  {option.stock_symbol}
+                  {optionName}
                 </Table.Cell>
                 <Table.Cell textAlign="center">
                   <DirectionBadge direction={option.direction} />
-                </Table.Cell>
-                <Table.Cell textAlign="center" color="fg.default">
-                  {formatHKD(option.strike_price)}
-                </Table.Cell>
-                <Table.Cell textAlign="center" color="fg.muted">
-                  {formatDateForDisplay(option.expiry_date)}
                 </Table.Cell>
                 <Table.Cell textAlign="center" color="fg.default">
                   {option.net_contracts}

@@ -3,12 +3,13 @@ CREATE TABLE "options" (
 	"user_id" uuid NOT NULL,
 	"stock_id" uuid NOT NULL,
 	"direction" text NOT NULL,
+	"option_type" text NOT NULL,
 	"strike_price" numeric NOT NULL,
 	"expiry_date" date NOT NULL,
 	"status" text DEFAULT 'Open' NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "unique_option_per_user" UNIQUE("user_id","stock_id","direction","strike_price","expiry_date")
+	CONSTRAINT "unique_option_per_user" UNIQUE("user_id","stock_id","direction","option_type","strike_price","expiry_date")
 );
 --> statement-breakpoint
 CREATE TABLE "stocks" (
@@ -29,6 +30,7 @@ CREATE TABLE "trades" (
 	"trade_date" timestamp with time zone DEFAULT now() NOT NULL,
 	"contracts" integer NOT NULL,
 	"premium" numeric NOT NULL,
+	"shares_per_contract" integer DEFAULT 500 NOT NULL,
 	"fee" numeric DEFAULT '0' NOT NULL,
 	"stock_price" numeric NOT NULL,
 	"hsi" numeric NOT NULL,

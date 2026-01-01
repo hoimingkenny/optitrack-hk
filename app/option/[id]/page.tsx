@@ -1,16 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Box, Container, Center, Spinner, Text, VStack, Flex, Button, Heading } from '@chakra-ui/react';
+import { Box, Container, Center, Spinner, Text, VStack, Flex, Heading, Table, Checkbox } from '@chakra-ui/react';
 import { User } from '@supabase/supabase-js';
-import { OptionWithTrades } from '@/db/schema';
+import { OptionWithTrades, Trade } from '@/db/schema';
 import { supabase } from '@/utils/supabase';
 import DashboardNav from '@/components/layout/DashboardNav';
-import { DirectionBadge, StatusBadge } from '@/components/ui/Badge';
-import { formatHKD } from '@/utils/helpers/pnl-calculator';
-import { formatDateForDisplay } from '@/utils/helpers/date-helpers';
+import { DirectionBadge, StatusBadge, OptionTypeBadge } from '@/components/ui/Badge';
+import { formatHKD, formatPNL } from '@/utils/helpers/pnl-calculator';
+import { formatDateForDisplay, formatDateToYYYYMMDD, formatDateForInput } from '@/utils/helpers/date-helpers';
 import { toast } from '@/components/ui/Toast';
 import { useRouter } from 'next/navigation';
+import Button from '@/components/ui/Button';
+import AddTradeModal from '@/components/options/AddTradeModal';
+import EditTradeModal from '@/components/options/EditTradeModal';
 
 export default function OptionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -23,6 +26,15 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
   // Option state
   const [optionData, setOptionData] = useState<OptionWithTrades | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isAddTradeModalOpen, setIsAddTradeModalOpen] = useState(false);
+  const [submittingTrade, setSubmittingTrade] = useState(false);
+  
+  // Edit/Delete state
+  const [selectedTradeIds, setSelectedTradeIds] = useState<Set<string>>(new Set());
+  const [isEditTradeModalOpen, setIsEditTradeModalOpen] = useState(false);
+  const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
+  const [displayDirectionForEdit, setDisplayDirectionForEdit] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Resolve params
   useEffect(() => {
@@ -61,40 +73,180 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
   }, [router]);
 
   // Load option data
-  useEffect(() => {
-    const loadOption = async () => {
-      if (!user || !resolvedParams?.id) return;
+  const loadOption = async () => {
+    if (!user || !resolvedParams?.id) return;
+    
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(`/api/options/${resolvedParams.id}`, {
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+      });
       
-      setLoading(true);
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const response = await fetch(`/api/options/${resolvedParams.id}`, {
+      if (!response.ok) {
+        if (response.status === 404) {
+          toast.error('Option not found');
+          router.push('/trades');
+          return;
+        }
+        throw new Error('Failed to fetch option');
+      }
+      
+      const data = await response.json();
+      setOptionData(data);
+    } catch (error) {
+      console.error('Error loading option:', error);
+      toast.error('Failed to load option details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadOption();
+  }, [user, resolvedParams, router]);
+
+  const handleAddTrade = async (tradeData: any) => {
+    if (!user || !optionData || !resolvedParams?.id) return;
+
+    setSubmittingTrade(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // Calculate trade type based on modal direction and option direction
+      // If modal direction matches option direction (e.g., both Sell), it's adding to the position
+      // If modal direction is opposite (e.g., option is Sell, modal is Buy), it's reducing/closing
+      let tradeType: any = 'ADD';
+      if (tradeData.direction !== optionData.direction) {
+        const currentNetContracts = optionData.summary.netContracts;
+        if (tradeData.contracts >= currentNetContracts) {
+          tradeType = 'CLOSE';
+        } else {
+          tradeType = 'REDUCE';
+        }
+      }
+
+      const response = await fetch(`/api/options/${resolvedParams.id}/trades`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify({
+          ...tradeData,
+          trade_type: tradeType,
+          // These are required by the API but might not be in the modal
+          stock_price: optionData.strike_price, // Fallback or handle separately
+          hsi: 20000, // Fallback
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to add trade');
+      }
+
+      toast.success('Trade added successfully');
+      setIsAddTradeModalOpen(false);
+      await loadOption(); // Refresh data
+    } catch (error: any) {
+      console.error('Error adding trade:', error);
+      toast.error(error.message || 'Failed to add trade');
+    } finally {
+      setSubmittingTrade(false);
+    }
+  };
+
+  const handleToggleTrade = (tradeId: string) => {
+    const newSelected = new Set(selectedTradeIds);
+    if (newSelected.has(tradeId)) {
+      newSelected.delete(tradeId);
+    } else {
+      newSelected.add(tradeId);
+    }
+    setSelectedTradeIds(newSelected);
+  };
+
+  const handleDeleteSelectedTrades = async () => {
+    if (!user || !resolvedParams?.id || selectedTradeIds.size === 0) return;
+    
+    // Double check: ensure no first trade is selected (though UI should prevent it)
+    if (optionData && optionData.trades.length > 0) {
+      const firstTradeId = optionData.trades[0].id;
+      if (selectedTradeIds.has(firstTradeId)) {
+        toast.error("Cannot delete the first trade");
+        return;
+      }
+    }
+
+    if (!confirm(`Are you sure you want to delete ${selectedTradeIds.size} trade(s)?`)) return;
+
+    setIsDeleting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const deletePromises = Array.from(selectedTradeIds).map(tradeId => 
+        fetch(`/api/options/${resolvedParams.id}/trades/${tradeId}`, {
+          method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${session?.access_token}`,
           },
-        });
-        
-        if (!response.ok) {
-          if (response.status === 404) {
-            toast.error('Option not found');
-            router.push('/trades');
-            return;
-          }
-          throw new Error('Failed to fetch option');
-        }
-        
-        const data = await response.json();
-        setOptionData(data);
-      } catch (error) {
-        console.error('Error loading option:', error);
-        toast.error('Failed to load option details');
-      } finally {
-        setLoading(false);
-      }
-    };
+        })
+      );
 
-    loadOption();
-  }, [user, resolvedParams, router]);
+      await Promise.all(deletePromises);
+      
+      toast.success('Trades deleted successfully');
+      setSelectedTradeIds(new Set());
+      await loadOption();
+    } catch (error) {
+      console.error('Error deleting trades:', error);
+      toast.error('Failed to delete trades');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleEditTradeClick = (trade: Trade, displayDirection: string) => {
+    setEditingTrade(trade);
+    setDisplayDirectionForEdit(displayDirection);
+    setIsEditTradeModalOpen(true);
+  };
+
+  const handleUpdateTrade = async (tradeId: string, updates: any) => {
+    if (!user || !resolvedParams?.id) return;
+
+    setSubmittingTrade(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch(`/api/options/${resolvedParams.id}/trades/${tradeId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+        body: JSON.stringify(updates),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update trade');
+      }
+
+      toast.success('Trade updated successfully');
+      setIsEditTradeModalOpen(false);
+      setEditingTrade(null);
+      await loadOption();
+    } catch (error: any) {
+      console.error('Error updating trade:', error);
+      toast.error(error.message || 'Failed to update trade');
+    } finally {
+      setSubmittingTrade(false);
+    }
+  };
 
   const handleSignOut = async () => {
     try {
@@ -146,24 +298,22 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
             <VStack gap={6} align="stretch">
               {/* Header */}
               <Box>
-                <Button variant="ghost" onClick={handleBack} mb={4}>
-                  ← Back to All Options
-                </Button>
+                <Box mb={4}>
+                  <Button variant="ghost" onClick={handleBack}>
+                    ← Back to All Options
+                  </Button>
+                </Box>
                 
                 <Flex alignItems="center" gap={3} mb={2}>
                   <Heading size="xl" color="fg.default">
-                    {optionData.stock_symbol}
+                    {(() => {
+                      const strikePrice = typeof optionData.strike_price === 'string' ? parseFloat(optionData.strike_price) : optionData.strike_price;
+                      const optionName = `${optionData.stock_symbol} ${formatDateToYYYYMMDD(optionData.expiry_date)} ${strikePrice.toFixed(2)} ${optionData.option_type}`;
+                      return optionName;
+                    })()}
                   </Heading>
                   <DirectionBadge direction={optionData.direction} />
                   <StatusBadge status={optionData.status} />
-                </Flex>
-                
-                <Flex gap={4} flexWrap="wrap" color="fg.muted">
-                  <Text>Strike: {formatHKD(optionData.strike_price)}</Text>
-                  <Text>•</Text>
-                  <Text>Expiry: {formatDateForDisplay(optionData.expiry_date)}</Text>
-                  <Text>•</Text>
-                  <Text>Net Contracts: {optionData.summary.netContracts}</Text>
                 </Flex>
               </Box>
 
@@ -190,6 +340,12 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                     </Text>
                   </Box>
                   <Box>
+                    <Text fontSize="sm" color="fg.muted" mb={1}>Shares/Contract</Text>
+                    <Text fontSize="2xl" fontWeight="bold" color="fg.default">
+                      {optionData.trades[0]?.shares_per_contract || 500}
+                    </Text>
+                  </Box>
+                  <Box>
                     <Text fontSize="sm" color="fg.muted" mb={1}>Net Position</Text>
                     <Text fontSize="2xl" fontWeight="bold" color="fg.default">
                       {optionData.summary.netContracts}
@@ -202,7 +358,28 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                       fontWeight="bold" 
                       color={optionData.summary.netPNL > 0 ? 'green.400' : optionData.summary.netPNL < 0 ? 'red.400' : 'fg.default'}
                     >
-                      {formatHKD(optionData.summary.netPNL)}
+                      {formatPNL(optionData.summary.netPNL)}
+                    </Text>
+                  </Box>
+                  <Box>
+                    <Text fontSize="sm" color="fg.muted" mb={1}>Covering cash if exercised</Text>
+                    <Text fontSize="2xl" fontWeight="bold" color="fg.default">
+                      {(() => {
+                        const strikePrice = typeof optionData.strike_price === 'string' ? parseFloat(optionData.strike_price) : optionData.strike_price;
+                        const sharesPerContract = optionData.trades[0]?.shares_per_contract || 500;
+                        const amount = optionData.summary.netContracts * sharesPerContract * strikePrice;
+                        return formatHKD(amount);
+                      })()}
+                    </Text>
+                  </Box>
+                  <Box>
+                    <Text fontSize="sm" color="fg.muted" mb={1}>Covering shares if exercised</Text>
+                    <Text fontSize="2xl" fontWeight="bold" color="fg.default">
+                      {(() => {
+                        const sharesPerContract = optionData.trades[0]?.shares_per_contract || 500;
+                        const totalShares = optionData.summary.netContracts * sharesPerContract;
+                        return totalShares.toLocaleString();
+                      })()}
                     </Text>
                   </Box>
                 </Flex>
@@ -223,58 +400,141 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                 {optionData.trades.length === 0 ? (
                   <Text color="fg.muted">No trades yet</Text>
                 ) : (
-                  <VStack gap={3} align="stretch">
-                    {optionData.trades.map((trade) => (
-                      <Box 
-                        key={trade.id}
-                        p={4}
-                        bg="bg.muted"
-                        borderRadius="lg"
-                        borderWidth="1px"
-                        borderColor="border.subtle"
-                      >
-                        <Flex justifyContent="space-between" alignItems="start">
-                          <Box>
-                            <Flex gap={2} alignItems="center" mb={2}>
-                              <Text fontWeight="bold" color="fg.default">
-                                {trade.trade_type}
-                              </Text>
-                              <Text color="fg.muted" fontSize="sm">
+                  <Box overflowX="auto">
+                    <Table.Root size="sm" variant="outline">
+                      <Table.Header>
+                        <Table.Row height="2.75rem">
+                          <Table.ColumnHeader width="40px"></Table.ColumnHeader>
+                          <Table.ColumnHeader textAlign="center">Date</Table.ColumnHeader>
+                          <Table.ColumnHeader textAlign="center">Direction</Table.ColumnHeader>
+                          <Table.ColumnHeader textAlign="center">Premium</Table.ColumnHeader>
+                          <Table.ColumnHeader textAlign="center">Contract</Table.ColumnHeader>
+                          <Table.ColumnHeader textAlign="center">Total Premium</Table.ColumnHeader>
+                          <Table.ColumnHeader textAlign="center">Fee</Table.ColumnHeader>
+                          <Table.ColumnHeader textAlign="center">PnL</Table.ColumnHeader>
+                          <Table.ColumnHeader textAlign="center">Actions</Table.ColumnHeader>
+                        </Table.Row>
+                      </Table.Header>
+                      <Table.Body>
+                        {optionData.trades.map((trade, index) => {
+                          // Determine Buy/Sell based on trade type and option direction
+                          // For a Sell Put/Call option: OPEN/ADD are Sell, REDUCE/CLOSE are Buy
+                          // For a Buy Put/Call option: OPEN/ADD are Buy, REDUCE/CLOSE are Sell
+                          const isInitialDirection = trade.trade_type === 'OPEN' || trade.trade_type === 'ADD';
+                          const displayDirection = optionData.direction === 'Sell' 
+                            ? (isInitialDirection ? 'Sell' : 'Buy')
+                            : (isInitialDirection ? 'Buy' : 'Sell');
+
+                          const totalPremium = parseFloat(trade.premium) * trade.contracts * trade.shares_per_contract;
+                          // Sell trades are cash inflows (+), Buy trades are cash outflows (-)
+                          const isSellTrade = displayDirection === 'Sell';
+                          const tradeCashFlow = isSellTrade ? totalPremium : -totalPremium;
+                          const tradePnl = tradeCashFlow - parseFloat(trade.fee);
+                          const pnlColor = tradePnl > 0 ? 'green.400' : tradePnl < 0 ? 'red.400' : 'fg.muted';
+
+                          const isFirstTrade = index === 0;
+
+                          return (
+                            <Table.Row key={trade.id} height="2.75rem">
+                              <Table.Cell>
+                                {!isFirstTrade && (
+                                  <input 
+                                    type="checkbox"
+                                    checked={selectedTradeIds.has(trade.id)} 
+                                    onChange={() => handleToggleTrade(trade.id)}
+                                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                  />
+                                )}
+                              </Table.Cell>
+                              <Table.Cell textAlign="center" color="fg.muted">
                                 {formatDateForDisplay(trade.trade_date)}
-                              </Text>
-                            </Flex>
-                            <Flex gap={4} fontSize="sm" color="fg.muted">
-                              <Text>Contracts: {trade.contracts}</Text>
-                              <Text>•</Text>
-                              <Text>Premium: {formatHKD(trade.premium)}</Text>
-                              <Text>•</Text>
-                              <Text>Fee: {formatHKD(trade.fee)}</Text>
-                            </Flex>
-                            {trade.notes && (
-                              <Text fontSize="sm" color="fg.muted" mt={2}>
-                                {trade.notes}
-                              </Text>
-                            )}
-                          </Box>
-                        </Flex>
-                      </Box>
-                    ))}
-                  </VStack>
+                              </Table.Cell>
+                              <Table.Cell textAlign="center" fontWeight="bold">
+                                {displayDirection}
+                              </Table.Cell>
+                              <Table.Cell textAlign="center">
+                                {formatHKD(trade.premium)}
+                              </Table.Cell>
+                              <Table.Cell textAlign="center">
+                                {trade.contracts}
+                              </Table.Cell>
+                              <Table.Cell textAlign="center">
+                                {formatHKD(totalPremium)}
+                              </Table.Cell>
+                              <Table.Cell textAlign="center">
+                                {formatHKD(trade.fee)}
+                              </Table.Cell>
+                              <Table.Cell textAlign="center" fontWeight="medium" color={pnlColor}>
+                                {formatPNL(tradePnl)}
+                              </Table.Cell>
+                              <Table.Cell textAlign="center">
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  onClick={() => handleEditTradeClick(trade, displayDirection)}
+                                >
+                                  Edit
+                                </Button>
+                              </Table.Cell>
+                            </Table.Row>
+                          );
+                        })}
+                      </Table.Body>
+                    </Table.Root>
+                  </Box>
                 )}
               </Box>
 
               {/* Action Buttons */}
               {optionData.status === 'Open' && (
                 <Flex gap={3}>
-                  <Button colorScheme="blue">Add to Position</Button>
-                  <Button colorScheme="orange">Reduce Position</Button>
-                  <Button colorScheme="red">Close Position</Button>
+                  <Button onClick={() => setIsAddTradeModalOpen(true)}>
+                    Add Trade
+                  </Button>
+                  {selectedTradeIds.size > 0 && (
+                    <Button 
+                      variant="danger" 
+                      onClick={handleDeleteSelectedTrades}
+                      isLoading={isDeleting}
+                    >
+                      Delete Selected ({selectedTradeIds.size})
+                    </Button>
+                  )}
                 </Flex>
               )}
             </VStack>
           )}
         </Container>
       </Box>
+
+      {optionData && (
+        <>
+          <AddTradeModal
+            isOpen={isAddTradeModalOpen}
+            onClose={() => setIsAddTradeModalOpen(false)}
+            onSubmit={handleAddTrade}
+            optionName={`${optionData.stock_symbol} ${formatDateToYYYYMMDD(optionData.expiry_date)} ${(typeof optionData.strike_price === 'string' ? parseFloat(optionData.strike_price) : optionData.strike_price).toFixed(2)} ${optionData.option_type}`}
+            sharesPerContract={optionData.trades[0]?.shares_per_contract || 500}
+            minDate={optionData.trades.length > 0 ? formatDateForInput(optionData.trades[0].trade_date) : undefined}
+            isLoading={submittingTrade}
+          />
+
+          <EditTradeModal
+            isOpen={isEditTradeModalOpen}
+            onClose={() => {
+              setIsEditTradeModalOpen(false);
+              setEditingTrade(null);
+            }}
+            onSubmit={handleUpdateTrade}
+            initialData={editingTrade}
+            optionName={`${optionData.stock_symbol} ${formatDateToYYYYMMDD(optionData.expiry_date)} ${(typeof optionData.strike_price === 'string' ? parseFloat(optionData.strike_price) : optionData.strike_price).toFixed(2)} ${optionData.option_type}`}
+            sharesPerContract={editingTrade?.shares_per_contract || 500}
+            minDate={optionData.trades.length > 0 ? formatDateForInput(optionData.trades[0].trade_date) : undefined}
+            isLoading={submittingTrade}
+            displayDirection={displayDirectionForEdit}
+          />
+        </>
+      )}
     </Box>
   );
 }

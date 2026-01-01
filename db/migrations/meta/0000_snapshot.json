@@ -1,5 +1,5 @@
 {
-  "id": "384da514-4c23-4a06-9f60-203388bde435",
+  "id": "37d74d51-b6dc-4afc-8b38-bd3736d32f71",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -29,6 +29,12 @@
         },
         "direction": {
           "name": "direction",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "option_type": {
+          "name": "option_type",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -92,6 +98,7 @@
             "user_id",
             "stock_id",
             "direction",
+            "option_type",
             "strike_price",
             "expiry_date"
           ]
@@ -209,6 +216,13 @@
           "type": "numeric",
           "primaryKey": false,
           "notNull": true
+        },
+        "shares_per_contract": {
+          "name": "shares_per_contract",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 500
         },
         "fee": {
           "name": "fee",

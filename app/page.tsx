@@ -13,6 +13,7 @@ import {
 import AuthForm from '@/components/auth/AuthForm';
 import DashboardNav from '@/components/layout/DashboardNav';
 import TradeForm from '@/components/trades/TradeForm';
+import OptionHeatmap from '@/components/dashboard/OptionHeatmap';
 import Button from '@/components/ui/Button';
 import { toast } from '@/components/ui/Toast';
 import { formatHKD, formatPNL } from '@/utils/helpers/pnl-calculator';
@@ -127,6 +128,7 @@ export default function Home() {
         option: {
           stock_symbol: data.stock_symbol,
           direction: data.direction,
+          option_type: data.option_type,
           strike_price: data.strike_price,
           expiry_date: data.expiry_date,
         },
@@ -248,7 +250,7 @@ export default function Home() {
             </Center>
           ) : options.length > 0 ? (
             <Box mb={6}>
-              <Flex gap={4} flexWrap="wrap">
+              <Flex gap={4} flexWrap="wrap" mb={6}>
                 {/* Total Options */}
                 <Box 
                   flex="1" 
@@ -301,6 +303,9 @@ export default function Home() {
                   </Text>
                 </Box>
               </Flex>
+
+              {/* Heatmap */}
+              <OptionHeatmap options={options} />
             </Box>
           ) : (
             <Center py={12} bg="bg.surface" borderRadius="xl" borderWidth="1px" borderColor="border.default">

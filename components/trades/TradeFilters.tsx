@@ -24,10 +24,14 @@ const STATUS_OPTIONS = [
 
 const DIRECTION_OPTIONS = [
   { value: 'ALL', label: 'All Directions' },
-  { value: 'Sell Put', label: 'Sell Put' },
-  { value: 'Sell Call', label: 'Sell Call' },
-  { value: 'Buy Put', label: 'Buy Put' },
-  { value: 'Buy Call', label: 'Buy Call' },
+  { value: 'Buy', label: 'Buy' },
+  { value: 'Sell', label: 'Sell' },
+];
+
+const OPTION_TYPE_OPTIONS = [
+  { value: 'ALL', label: 'All Types' },
+  { value: 'Call', label: 'Call' },
+  { value: 'Put', label: 'Put' },
 ];
 
 export default function TradeFiltersComponent({ 
@@ -51,7 +55,7 @@ export default function TradeFiltersComponent({
     onFilterChange({});
   };
 
-  const hasActiveFilters = filters.stock_symbol || filters.status || filters.direction;
+  const hasActiveFilters = filters.stock_symbol || filters.status || filters.direction || filters.option_type;
 
   return (
     <Flex
@@ -73,7 +77,7 @@ export default function TradeFiltersComponent({
         />
       </Box>
       
-      <Box flex="1" minW="150px">
+      <Box flex="1" minW="120px">
         <Select
           label="Status"
           options={STATUS_OPTIONS}
@@ -82,12 +86,21 @@ export default function TradeFiltersComponent({
         />
       </Box>
       
-      <Box flex="1" minW="150px">
+      <Box flex="1" minW="120px">
         <Select
           label="Direction"
           options={DIRECTION_OPTIONS}
           value={filters.direction || 'ALL'}
           onChange={(e) => handleChange('direction', e.target.value)}
+        />
+      </Box>
+
+      <Box flex="1" minW="120px">
+        <Select
+          label="Type"
+          options={OPTION_TYPE_OPTIONS}
+          value={filters.option_type || 'ALL'}
+          onChange={(e) => handleChange('option_type', e.target.value)}
         />
       </Box>
 

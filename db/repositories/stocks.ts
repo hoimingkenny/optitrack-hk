@@ -1,6 +1,6 @@
 import { db } from '@/db';
 import { stocks, Stock, NewStock, CreateStockInput, UpdateStockInput } from '@/db/schema';
-import { eq, ilike } from 'drizzle-orm';
+import { eq, ilike, or } from 'drizzle-orm';
 
 /**
  * Create a new stock
@@ -89,9 +89,16 @@ export async function deleteStock(id: string): Promise<boolean> {
  * Search stocks by name or symbol
  */
 export async function searchStocks(query: string): Promise<Stock[]> {
+  const searchTerm = `%${query}%`;
   return await db
     .select()
     .from(stocks)
-    .where(ilike(stocks.symbol, `%${query}%`))
-    .orderBy(stocks.symbol);
+    .where(
+      or(
+        ilike(stocks.symbol, searchTerm),
+        ilike(stocks.name, searchTerm)
+      )
+    )
+    .orderBy(stocks.symbol)
+    .limit(10);
 }

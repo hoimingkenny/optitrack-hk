@@ -1,6 +1,7 @@
 // Trade type definitions for OptiTrack HK
 
-export type TradeDirection = 'Sell Put' | 'Sell Call' | 'Buy Put' | 'Buy Call';
+export type TradeDirection = 'Buy' | 'Sell';
+export type OptionType = 'Call' | 'Put';
 
 export type TradeStatus = 
   | 'Open' 
@@ -16,6 +17,7 @@ export interface Trade {
   // Trade Details
   stock_symbol: string; // e.g., "0369.HK"
   direction: TradeDirection;
+  option_type: OptionType;
   strike_price: number;
   expiry_date: string; // YYYY-MM-DD
   
@@ -46,6 +48,7 @@ export interface Trade {
 export interface NewTradeInput {
   stock_symbol: string;
   direction: TradeDirection;
+  option_type: OptionType;
   strike_price: number;
   expiry_date: string;
   premium: number;

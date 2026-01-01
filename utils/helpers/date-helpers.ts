@@ -19,6 +19,17 @@ export function formatDateForDisplay(date: Date | string): string {
 }
 
 /**
+ * Format date to YYYYMMDD string
+ */
+export function formatDateToYYYYMMDD(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}${month}${day}`;
+}
+
+/**
  * Format datetime for display (e.g., "25 Dec 2025, 14:30")
  */
 export function formatDateTimeForDisplay(date: Date | string): string {

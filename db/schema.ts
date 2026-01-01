@@ -2,8 +2,12 @@ import { pgTable, uuid, text, numeric, integer, timestamp, date, unique } from '
 import { sql } from 'drizzle-orm';
 
 // Trade direction enum values
-export const tradeDirections = ['Sell Put', 'Sell Call', 'Buy Put', 'Buy Call'] as const;
+export const tradeDirections = ['Buy', 'Sell'] as const;
 export type TradeDirection = typeof tradeDirections[number];
+
+// Option type enum values
+export const optionTypes = ['Call', 'Put'] as const;
+export type OptionType = typeof optionTypes[number];
 
 // Trade status enum values
 export const tradeStatuses = ['Open', 'Closed', 'Expired', 'Exercised', 'Lapsed'] as const;
@@ -41,6 +45,7 @@ export const options = pgTable('options', {
   // Option Contract Details
   stock_id: uuid('stock_id').notNull().references(() => stocks.id, { onDelete: 'restrict' }),
   direction: text('direction').notNull().$type<TradeDirection>(),
+  option_type: text('option_type').notNull().$type<OptionType>(),
   strike_price: numeric('strike_price').notNull(),
   expiry_date: date('expiry_date').notNull(),
   
@@ -56,6 +61,7 @@ export const options = pgTable('options', {
     table.user_id,
     table.stock_id,
     table.direction,
+    table.option_type,
     table.strike_price,
     table.expiry_date
   ),
@@ -77,6 +83,7 @@ export const trades = pgTable('trades', {
   // Position Details
   contracts: integer('contracts').notNull(),
   premium: numeric('premium').notNull(),
+  shares_per_contract: integer('shares_per_contract').notNull().default(500),
   fee: numeric('fee').notNull().default('0'),
   
   // Market Context
@@ -120,6 +127,7 @@ export interface UpdateStockInput {
 export interface CreateOptionInput {
   stock_symbol: string;
   direction: TradeDirection;
+  option_type: OptionType;
   strike_price: number;
   expiry_date: string;
 }
@@ -128,6 +136,7 @@ export interface CreateTradeInput {
   trade_type: TradeType;
   contracts: number;
   premium: number;
+  shares_per_contract?: number;
   fee?: number;
   stock_price: number;
   hsi: number;
@@ -150,6 +159,7 @@ export interface UpdateTradeInput {
   fee?: number;
   stock_price?: number;
   hsi?: number;
+  trade_date?: string;
   notes?: string;
 }
 
@@ -161,6 +171,7 @@ export interface OptionFilters {
   stock_symbol?: string;
   status?: TradeStatus | 'ALL';
   direction?: TradeDirection | 'ALL';
+  option_type?: OptionType | 'ALL';
   start_date?: string;
   end_date?: string;
 }

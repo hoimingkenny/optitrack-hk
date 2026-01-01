@@ -23,9 +23,10 @@ export function calculateTotalPremium(
 /**
  * Format PNL for display with HKD currency
  */
-export function formatPNL(pnl: number): string {
-  const sign = pnl >= 0 ? '+' : '';
-  return `${sign}HKD ${pnl.toLocaleString('en-HK', { 
+export function formatPNL(pnl: number | null | undefined): string {
+  const value = pnl ?? 0;
+  const sign = value >= 0 ? '+' : '';
+  return `${sign}HKD ${value.toLocaleString('en-HK', { 
     minimumFractionDigits: 2, 
     maximumFractionDigits: 2 
   })}`;
@@ -34,7 +35,8 @@ export function formatPNL(pnl: number): string {
 /**
  * Format currency for display (HKD)
  */
-export function formatHKD(amount: number | string): string {
+export function formatHKD(amount: number | string | null | undefined): string {
+  if (amount === null || amount === undefined) return 'HKD 0.00';
   const num = typeof amount === 'string' ? parseFloat(amount) : amount;
   return `HKD ${num.toLocaleString('en-HK', { 
     minimumFractionDigits: 2, 

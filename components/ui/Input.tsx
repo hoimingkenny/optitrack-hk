@@ -14,7 +14,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
     const inputId = id || label?.toLowerCase().replace(/\s/g, '-');
 
     return (
-      <Field.Root invalid={!!error} required={required}>
+      <Field.Root invalid={!!error} required={required} w="full">
         {label && (
           <Field.Label htmlFor={inputId} fontSize="sm" fontWeight="medium" color="fg.muted" mb={1.5}>
             {label}

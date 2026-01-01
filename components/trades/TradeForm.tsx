@@ -2,18 +2,21 @@
 
 import { useState, FormEvent } from 'react';
 import { Box, SimpleGrid, VStack, Text, Flex } from '@chakra-ui/react';
-import { TradeDirection } from '@/db/schema';
+import { TradeDirection, OptionType } from '@/db/schema';
 import { validateTradeInput, sanitizeStockSymbol, parseNumberInput } from '@/utils/helpers/validators';
 import { calculateTotalPremium, DEFAULT_SHARES_PER_CONTRACT } from '@/utils/helpers/pnl-calculator';
 import { formatDateForInput } from '@/utils/helpers/date-helpers';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
+import StockSelect from '@/components/ui/StockSelect';
 import Card, { CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
 
 interface TradeFormData {
   stock_symbol: string;
+  shares_per_contract: number;
   direction: TradeDirection | '';
+  option_type: OptionType | '';
   strike_price: string;
   expiry_date: string;
   premium: string;
@@ -31,16 +34,21 @@ interface TradeFormProps {
 }
 
 const DIRECTION_OPTIONS = [
-  { value: 'Sell Put', label: 'Sell Put' },
-  { value: 'Sell Call', label: 'Sell Call' },
-  { value: 'Buy Put', label: 'Buy Put' },
-  { value: 'Buy Call', label: 'Buy Call' },
+  { value: 'Buy', label: 'Buy' },
+  { value: 'Sell', label: 'Sell' },
+];
+
+const OPTION_TYPE_OPTIONS = [
+  { value: 'Call', label: 'Call' },
+  { value: 'Put', label: 'Put' },
 ];
 
 export default function TradeForm({ onSubmit, onCancel, isLoading = false }: TradeFormProps) {
   const [formData, setFormData] = useState<TradeFormData>({
     stock_symbol: '',
+    shares_per_contract: DEFAULT_SHARES_PER_CONTRACT,
     direction: '',
+    option_type: '',
     strike_price: '',
     expiry_date: '',
     premium: '',
@@ -48,6 +56,7 @@ export default function TradeForm({ onSubmit, onCancel, isLoading = false }: Tra
     fee: '',
     stock_price: '',
     hsi: '',
+    trade_date: formatDateForInput(new Date()),
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -55,7 +64,7 @@ export default function TradeForm({ onSubmit, onCancel, isLoading = false }: Tra
   // Calculate total premium preview
   const premium = parseNumberInput(formData.premium) || 0;
   const contracts = parseNumberInput(formData.contracts) || 0;
-  const totalPremium = calculateTotalPremium(premium, contracts, DEFAULT_SHARES_PER_CONTRACT);
+  const totalPremium = calculateTotalPremium(premium, contracts, formData.shares_per_contract);
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -70,7 +79,9 @@ export default function TradeForm({ onSubmit, onCancel, isLoading = false }: Tra
 
     const input = {
       stock_symbol: sanitizeStockSymbol(formData.stock_symbol),
+      shares_per_contract: formData.shares_per_contract,
       direction: formData.direction as TradeDirection,
+      option_type: formData.option_type as OptionType,
       strike_price: parseNumberInput(formData.strike_price),
       expiry_date: formData.expiry_date,
       premium: parseNumberInput(formData.premium),
@@ -78,6 +89,7 @@ export default function TradeForm({ onSubmit, onCancel, isLoading = false }: Tra
       fee: parseNumberInput(formData.fee || '0'),
       stock_price: parseNumberInput(formData.stock_price),
       hsi: parseNumberInput(formData.hsi),
+      trade_date: formData.trade_date,
     };
 
     const validationErrors = validateTradeInput(input);
@@ -102,13 +114,21 @@ export default function TradeForm({ onSubmit, onCancel, isLoading = false }: Tra
       <form onSubmit={handleSubmit}>
         <CardContent>
           <VStack gap={4}>
-            {/* Row 1: Symbol and Direction */}
-            <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} w="full">
-              <Input
+            {/* Row 1: Symbol, Direction, and Option Type */}
+            <SimpleGrid columns={{ base: 1, md: 3 }} gap={4} w="full">
+              <StockSelect
                 label="Stock Symbol"
-                placeholder="e.g., 03690.HK"
                 value={formData.stock_symbol}
-                onChange={(e) => handleChange('stock_symbol', e.target.value)}
+                onSelect={(stock) => {
+                  setFormData(prev => ({ 
+                    ...prev, 
+                    stock_symbol: stock.symbol,
+                    shares_per_contract: stock.shares_per_contract 
+                  }));
+                  if (errors.stock_symbol) {
+                    setErrors(prev => ({ ...prev, stock_symbol: '' }));
+                  }
+                }}
                 error={errors.stock_symbol}
                 required
               />
@@ -121,10 +141,19 @@ export default function TradeForm({ onSubmit, onCancel, isLoading = false }: Tra
                 error={errors.direction}
                 required
               />
+              <Select
+                label="Option Type"
+                options={OPTION_TYPE_OPTIONS}
+                value={formData.option_type}
+                onChange={(e) => handleChange('option_type', e.target.value)}
+                placeholder="Select type"
+                error={errors.option_type}
+                required
+              />
             </SimpleGrid>
 
-            {/* Row 2: Strike and Expiry */}
-            <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} w="full">
+            {/* Row 2: Strike, Expiry, and Trade Date */}
+            <SimpleGrid columns={{ base: 1, md: 3 }} gap={4} w="full">
               <Input
                 label="Strike Price (HKD)"
                 type="number"
@@ -143,6 +172,14 @@ export default function TradeForm({ onSubmit, onCancel, isLoading = false }: Tra
                 value={formData.expiry_date}
                 onChange={(e) => handleChange('expiry_date', e.target.value)}
                 error={errors.expiry_date}
+                required
+              />
+              <Input
+                label="Trade Date"
+                type="date"
+                value={formData.trade_date}
+                onChange={(e) => handleChange('trade_date', e.target.value)}
+                error={errors.trade_date}
                 required
               />
             </SimpleGrid>
@@ -183,7 +220,7 @@ export default function TradeForm({ onSubmit, onCancel, isLoading = false }: Tra
                   </Text>
                 </Flex>
                 <Text fontSize="xs" color="fg.subtle" mt={1}>
-                  {premium} × {contracts} contracts × {DEFAULT_SHARES_PER_CONTRACT} shares
+                  {premium} × {contracts} contracts × {formData.shares_per_contract} shares
                 </Text>
               </Box>
             )}
