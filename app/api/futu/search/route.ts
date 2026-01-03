@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { searchStocks } from '@/db/repositories/stocks';
+import globalClient from '@/utils/futu/client';
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,8 +10,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json([]);
     }
 
-    const stocks = await searchStocks(query);
-    return NextResponse.json(stocks);
+    const results = await globalClient.searchStocks(query);
+    return NextResponse.json(results);
   } catch (error) {
     console.error('Error searching stocks:', error);
     return NextResponse.json({ error: 'Failed to search stocks' }, { status: 500 });

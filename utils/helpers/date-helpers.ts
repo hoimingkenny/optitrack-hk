@@ -79,6 +79,15 @@ export function parseDate(dateString: string): Date {
 }
 
 /**
+ * Check if date is a weekend (Saturday or Sunday)
+ */
+export function isWeekend(date: Date | string): boolean {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  const day = d.getDay();
+  return day === 0 || day === 6; // 0 is Sunday, 6 is Saturday
+}
+
+/**
  * Get relative time string (e.g., "2 days ago", "in 5 days")
  */
 export function getRelativeTimeString(date: Date | string): string {

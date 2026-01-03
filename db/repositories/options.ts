@@ -1,8 +1,7 @@
 import { db } from '@/db';
-import { options, trades, stocks, Option, NewOption, Trade, CreateOptionInput, CreateTradeInput, UpdateOptionInput, OptionWithSummary, OptionWithTrades, TradeDirection } from '@/db/schema';
-import { eq, and, desc, sql } from 'drizzle-orm';
+import { options, trades, Option, Trade, CreateOptionInput, CreateTradeInput, UpdateOptionInput, OptionWithSummary, OptionWithTrades } from '@/db/schema';
+import { eq, and, desc, asc, sql } from 'drizzle-orm';
 import { calculateOptionPNL, calculateNetContracts } from '@/utils/helpers/option-calculator';
-import { createStock, getStockBySymbol } from './stocks';
 
 /**
  * Create a new option with an initial trade
@@ -14,49 +13,66 @@ export async function createOptionWithTrade(
 ): Promise<{ option: Option; trade: Trade }> {
   // Start transaction
   const result = await db.transaction(async (tx) => {
-    // 1. Find or create stock
-    let stockId: string;
-    const existingStock = await tx
+    // 1. Check if option already exists
+    const [existingOption] = await tx
       .select()
-      .from(stocks)
-      .where(eq(stocks.symbol, optionData.stock_symbol.toUpperCase()))
+      .from(options)
+      .where(
+        and(
+          eq(options.user_id, userId),
+          eq(options.stock_symbol, optionData.stock_symbol.toUpperCase()),
+          eq(options.direction, optionData.direction),
+          eq(options.option_type, optionData.option_type),
+          eq(options.strike_price, optionData.strike_price.toString()),
+          eq(options.expiry_date, optionData.expiry_date)
+        )
+      )
       .limit(1);
 
-    if (existingStock.length > 0) {
-      stockId = existingStock[0].id;
+    let optionId: string;
+    let finalOption: Option;
+
+    if (existingOption) {
+      optionId = existingOption.id;
+      finalOption = existingOption;
+      
+      // If the option was closed, we might want to reopen it if adding a trade.
+      // If it's expired, we keep it as expired.
+      if (existingOption.status === 'Closed') {
+        const [updatedOption] = await tx
+          .update(options)
+          .set({ status: 'Open', updated_at: new Date() })
+          .where(eq(options.id, optionId))
+          .returning();
+        finalOption = updatedOption;
+      }
     } else {
-      const [newStock] = await tx
-        .insert(stocks)
+      // Create new option
+      const [newOption] = await tx
+        .insert(options)
         .values({
-          name: optionData.stock_symbol.toUpperCase(),
-          symbol: optionData.stock_symbol.toUpperCase(),
-          shares_per_contract: 500, // Default
+          user_id: userId,
+          stock_symbol: optionData.stock_symbol.toUpperCase(),
+          stock_name: optionData.stock_name || optionData.stock_symbol.toUpperCase(),
+          direction: optionData.direction,
+          option_type: optionData.option_type,
+          strike_price: optionData.strike_price.toString(),
+          expiry_date: optionData.expiry_date,
+          futu_code: optionData.futu_code,
+          status: optionData.status || 'Open',
         })
         .returning();
-      stockId = newStock.id;
+      optionId = newOption.id;
+      finalOption = newOption;
     }
 
-    // 2. Create the option
-    const [newOption] = await tx
-      .insert(options)
-      .values({
-        user_id: userId,
-        stock_id: stockId,
-        direction: optionData.direction,
-        option_type: optionData.option_type,
-        strike_price: optionData.strike_price.toString(),
-        expiry_date: optionData.expiry_date,
-        status: 'Open',
-      })
-      .returning();
-
-    // 3. Create the initial trade (always OPEN)
+    // 2. Create the trade (If it's an existing option, we use ADD, if new we use OPEN)
     const [newTrade] = await tx
       .insert(trades)
       .values({
-        option_id: newOption.id,
+        option_id: optionId,
         user_id: userId,
-        trade_type: 'OPEN',
+        trade_type: existingOption ? 'ADD' : 'OPEN',
         contracts: tradeData.contracts,
         premium: tradeData.premium.toString(),
         shares_per_contract: tradeData.shares_per_contract ?? 500,
@@ -68,7 +84,7 @@ export async function createOptionWithTrade(
       })
       .returning();
 
-    return { option: newOption, trade: newTrade };
+    return { option: finalOption, trade: newTrade };
   });
 
   return result;
@@ -83,30 +99,32 @@ export async function getOptionsWithSummary(
   const result = await db
     .select({
       option: options,
-      stockSymbol: stocks.symbol,
       trades: sql<Trade[]>`json_agg(${trades}.*)`.as('trades'),
     })
     .from(options)
-    .innerJoin(stocks, eq(options.stock_id, stocks.id))
     .leftJoin(trades, eq(trades.option_id, options.id))
     .where(eq(options.user_id, userId))
-    .groupBy(options.id, stocks.symbol)
-    .orderBy(desc(options.created_at));
+    .groupBy(options.id)
+    .orderBy(
+      sql`CASE WHEN ${options.status} = 'Open' THEN 0 ELSE 1 END`,
+      asc(options.expiry_date),
+      asc(options.stock_symbol)
+    );
 
   return result.map((row) => {
     const tradesData: Trade[] = Array.isArray(row.trades) 
       ? row.trades.filter((t: Trade | null) => t !== null) 
       : [];
-    const pnl = calculateOptionPNL({ ...row.option, stock_symbol: row.stockSymbol } as any, tradesData);
+    const pnl = calculateOptionPNL({ ...row.option } as any, tradesData);
     const netContracts = calculateNetContracts(tradesData);
 
     return {
       ...row.option,
-      stock_symbol: row.stockSymbol,
       total_contracts: pnl.totalOpened,
       net_contracts: netContracts,
       total_pnl: pnl.netPNL,
       trades_count: tradesData.length,
+      shares_per_contract: tradesData[0]?.shares_per_contract || 500,
     };
   });
 }
@@ -118,17 +136,13 @@ export async function getOptionById(
   optionId: string,
   userId: string
 ): Promise<OptionWithTrades | null> {
-  const [row] = await db
-    .select({
-      option: options,
-      stockSymbol: stocks.symbol,
-    })
+  const [option] = await db
+    .select()
     .from(options)
-    .innerJoin(stocks, eq(options.stock_id, stocks.id))
     .where(and(eq(options.id, optionId), eq(options.user_id, userId)))
     .limit(1);
 
-  if (!row) return null;
+  if (!option) return null;
 
   const optionTrades = await db
     .select()
@@ -136,11 +150,10 @@ export async function getOptionById(
     .where(eq(trades.option_id, optionId))
     .orderBy(trades.trade_date);
 
-  const summary = calculateOptionPNL({ ...row.option, stock_symbol: row.stockSymbol } as any, optionTrades);
+  const summary = calculateOptionPNL({ ...option } as any, optionTrades);
 
   return {
-    ...row.option,
-    stock_symbol: row.stockSymbol,
+    ...option,
     trades: optionTrades,
     summary,
   };
@@ -216,17 +229,13 @@ export async function findOptionByContract(
   strikePrice: number,
   expiryDate: string
 ): Promise<Option | null> {
-  // First get stock ID
-  const stock = await getStockBySymbol(stockSymbol);
-  if (!stock) return null;
-
   const [option] = await db
     .select()
     .from(options)
     .where(
       and(
         eq(options.user_id, userId),
-        eq(options.stock_id, stock.id),
+        eq(options.stock_symbol, stockSymbol.toUpperCase()),
         sql`${options.direction} = ${direction}`,
         eq(options.strike_price, strikePrice.toString()),
         eq(options.expiry_date, expiryDate)

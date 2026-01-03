@@ -132,18 +132,29 @@ export function calculateRealizedPNL(
 
 /**
  * Calculate unrealized PNL for open contracts
- * Returns 0 for now (would need current market price)
+ * @param option The option position
+ * @param trades All trades for this option
+ * @param currentPremium Optional current market premium (e.g. from Futu snapshot)
  */
 export function calculateUnrealizedPNL(
   option: Option,
-  trades: Trade[]
+  trades: Trade[],
+  currentPremium?: number
 ): number {
   const netContracts = calculateNetContracts(trades);
-  if (netContracts === 0) return 0;
+  if (netContracts === 0 || currentPremium === undefined) return 0;
   
-  // TODO: Calculate based on current market price
-  // For now, return 0 for open positions
-  return 0;
+  const isSell = isSellDirection(option.direction);
+  const shares = parseNumeric(trades[0]?.shares_per_contract) || DEFAULT_SHARES_PER_CONTRACT;
+  const avgEntry = calculateAverageEntryPremium(trades);
+
+  // For Sellers (Short): PNL = (Entry Premium - Current Premium) * contracts * shares
+  // For Buyers (Long): PNL = (Current Premium - Entry Premium) * contracts * shares
+  if (isSell) {
+    return (avgEntry - currentPremium) * netContracts * shares;
+  } else {
+    return (currentPremium - avgEntry) * netContracts * shares;
+  }
 }
 
 /**
@@ -152,7 +163,8 @@ export function calculateUnrealizedPNL(
  */
 export function calculateOptionPNL(
   option: Option,
-  trades: Trade[]
+  trades: Trade[],
+  currentPremium?: number
 ): OptionPNL {
   const totalOpened = calculateTotalOpened(trades);
   const totalClosed = calculateTotalClosed(trades);
@@ -179,7 +191,8 @@ export function calculateOptionPNL(
     }
   }, 0);
 
-  const netPNL = grossPNL - totalFees;
+  const unrealizedPNL = calculateUnrealizedPNL(option, trades, currentPremium);
+  const netPNL = grossPNL - totalFees + unrealizedPNL;
   
   // Calculate return percentage based on total premium invested
   const totalInvested = avgEntryPremium * totalOpened * (parseNumeric(trades[0]?.shares_per_contract) || DEFAULT_SHARES_PER_CONTRACT);
@@ -192,9 +205,9 @@ export function calculateOptionPNL(
     avgEntryPremium,
     avgExitPremium,
     totalFees,
-    realizedPNL: grossPNL, // Realized PNL in this simple model is the running total
-    unrealizedPNL: 0,
-    grossPNL,
+    realizedPNL: grossPNL, 
+    unrealizedPNL,
+    grossPNL: grossPNL + unrealizedPNL,
     netPNL,
     returnPercentage,
   };
@@ -203,7 +216,7 @@ export function calculateOptionPNL(
 /**
  * Format option description (for display)
  */
-export function formatOptionDescription(option: Option & { stock_symbol?: string }): string {
+export function formatOptionDescription(option: Option): string {
   const strike = parseNumeric(option.strike_price);
   const symbol = option.stock_symbol || 'Unknown';
   return `${symbol} ${option.direction} HKD ${strike.toFixed(2)}`;
@@ -260,6 +273,11 @@ export function validateTrade(
   // Cannot add trades to closed position
   if (option.status === 'Closed') {
     return { valid: false, error: 'Cannot add trades to closed position' };
+  }
+
+  // Cannot add trades to expired option with no position
+  if (option.status === 'Expired' && netContracts === 0) {
+    return { valid: false, error: 'Cannot add trades to expired option with zero net position' };
   }
   
   return { valid: true };

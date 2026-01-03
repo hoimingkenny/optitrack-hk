@@ -75,8 +75,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate trade data
-    if (!tradeData.contracts || !tradeData.premium || 
-        !tradeData.stock_price || tradeData.hsi === undefined) {
+    if (tradeData.contracts === undefined || tradeData.premium === undefined || 
+        tradeData.stock_price === undefined || tradeData.hsi === undefined) {
       return NextResponse.json(
         { error: 'Missing required trade fields' },
         { status: 400 }

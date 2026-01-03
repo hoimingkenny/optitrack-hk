@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Box, Container, Flex, Text, VStack, Center, Spinner } from '@chakra-ui/react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Box, Container, Flex, Text, VStack, Center, Spinner, SimpleGrid, Heading } from '@chakra-ui/react';
 import { User } from '@supabase/supabase-js';
 import { OptionWithSummary, CreateOptionWithTradeInput } from '@/db/schema';
 import { 
@@ -14,7 +14,12 @@ import AuthForm from '@/components/auth/AuthForm';
 import DashboardNav from '@/components/layout/DashboardNav';
 import TradeForm from '@/components/trades/TradeForm';
 import OptionHeatmap from '@/components/dashboard/OptionHeatmap';
+import SellPutExposure from '@/components/dashboard/SellPutExposure';
+import SellCallExposure from '@/components/dashboard/SellCallExposure';
+import ExposureTimeline from '@/components/dashboard/ExposureTimeline';
+import Select from '@/components/ui/Select';
 import Button from '@/components/ui/Button';
+import Modal from '@/components/ui/Modal';
 import { toast } from '@/components/ui/Toast';
 import { formatHKD, formatPNL } from '@/utils/helpers/pnl-calculator';
 
@@ -29,8 +34,32 @@ export default function Home() {
   // Options state
   const [options, setOptions] = useState<OptionWithSummary[]>([]);
   const [optionsLoading, setOptionsLoading] = useState(false);
+  const [refreshingPNL, setRefreshingPNL] = useState(false);
   const [showNewTradeForm, setShowNewTradeForm] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
+  const [exposureTimeRange, setExposureTimeRange] = useState<string>('all');
+
+  const TIME_RANGE_OPTIONS = useMemo(() => {
+    const now = new Date();
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const endOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+    const endOfNextNextMonth = new Date(now.getFullYear(), now.getMonth() + 3, 0);
+    
+    const endOfYear = new Date(now.getFullYear(), 11, 31);
+    
+    const daysToMonthEnd = Math.ceil((endOfMonth.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    const daysToNextMonthEnd = Math.ceil((endOfNextMonth.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    const daysToNextNextMonthEnd = Math.ceil((endOfNextNextMonth.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    const daysToYearEnd = Math.ceil((endOfYear.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+    return [
+      { value: 'all', label: 'All Time' },
+      { value: 'end_of_month', label: `End of Current Month (${daysToMonthEnd}d)` },
+      { value: 'end_of_next_month', label: `End of Next Month (${daysToNextMonthEnd}d)` },
+      { value: 'end_of_next_next_month', label: `End of Next Next Month (${daysToNextNextMonthEnd}d)` },
+      { value: 'end_of_year', label: `End of Current Year (${daysToYearEnd}d)` },
+    ];
+  }, []);
 
   // Check auth state on mount
   useEffect(() => {
@@ -70,6 +99,9 @@ export default function Home() {
       if (!response.ok) throw new Error('Failed to fetch options');
       const data = await response.json();
       setOptions(data.options);
+      
+      // Refresh PNL for open positions
+      refreshPNL(data.options);
     } catch (error) {
       console.error('Error loading options:', error);
       toast.error('Failed to load options');
@@ -77,6 +109,44 @@ export default function Home() {
       setOptionsLoading(false);
     }
   }, [user]);
+
+  const refreshPNL = async (currentOptions: OptionWithSummary[]) => {
+    const hasOpenOptions = currentOptions.some(o => o.status === 'Open' && o.futu_code);
+    if (!hasOpenOptions) return;
+
+    setRefreshingPNL(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch('/api/futu/pnl-refresh', {
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const updates = data.updates as any[];
+        
+        if (updates.length > 0) {
+          setOptions(prev => prev.map(opt => {
+            const update = updates.find(u => u.optionId === opt.id);
+            if (update) {
+              return {
+                ...opt,
+                total_pnl: update.netPNL,
+                unrealized_pnl: update.unrealizedPNL, // We might need to add this to OptionWithSummary type
+              };
+            }
+            return opt;
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing PNL:', error);
+    } finally {
+      setRefreshingPNL(false);
+    }
+  };
 
   useEffect(() => {
     if (user) {
@@ -127,10 +197,12 @@ export default function Home() {
       const optionData: CreateOptionWithTradeInput = {
         option: {
           stock_symbol: data.stock_symbol,
+          stock_name: data.stock_name,
           direction: data.direction,
           option_type: data.option_type,
           strike_price: data.strike_price,
           expiry_date: data.expiry_date,
+          futu_code: data.futu_code,
         },
         trade: {
           contracts: data.contracts,
@@ -139,6 +211,7 @@ export default function Home() {
           stock_price: data.stock_price,
           hsi: data.hsi,
           trade_date: data.trade_date,
+          shares_per_contract: data.shares_per_contract,
         },
       };
       
@@ -229,16 +302,19 @@ export default function Home() {
             </Button>
           </Flex>
 
-          {/* New Trade Form */}
-          {showNewTradeForm && (
-            <Box mb={6}>
-              <TradeForm
-                onSubmit={handleCreateTrade}
-                onCancel={() => setShowNewTradeForm(false)}
-                isLoading={formLoading}
-              />
-            </Box>
-          )}
+          {/* New Trade Modal */}
+          <Modal
+            isOpen={showNewTradeForm}
+            onClose={() => setShowNewTradeForm(false)}
+            title="New Option"
+            size="xl"
+          >
+            <TradeForm
+              onSubmit={handleCreateTrade}
+              onCancel={() => setShowNewTradeForm(false)}
+              isLoading={formLoading}
+            />
+          </Modal>
 
           {/* Summary Cards */}
           {optionsLoading ? (
@@ -306,6 +382,33 @@ export default function Home() {
 
               {/* Heatmap */}
               <OptionHeatmap options={options} />
+
+              {/* Exposure Summaries */}
+              <Box mt={8}>
+                <Flex justifyContent="space-between" alignItems="flex-end" mb={4}>
+                  <VStack align="start" gap={1}>
+                    <Heading size="md" color="fg.default">Top 5 Exposure Analysis</Heading>
+                    <Text fontSize="xs" color="fg.muted">Concentrated risk by expiry milestone</Text>
+                  </VStack>
+                  <Box w="240px">
+                    <Text fontSize="xs" fontWeight="medium" color="fg.muted" mb={1} textAlign="right">
+                      Risk Horizon
+                    </Text>
+                    <Select
+                      options={TIME_RANGE_OPTIONS}
+                      value={exposureTimeRange}
+                      onChange={(e) => setExposureTimeRange(e.target.value)}
+                    />
+                  </Box>
+                </Flex>
+                <SimpleGrid columns={{ base: 1, lg: 2 }} gap={6}>
+                  <SellPutExposure options={options} timeRange={exposureTimeRange} />
+                  <SellCallExposure options={options} timeRange={exposureTimeRange} />
+                </SimpleGrid>
+              </Box>
+
+              {/* Exposure Timeline */}
+              <ExposureTimeline options={options} />
             </Box>
           ) : (
             <Center py={12} bg="bg.surface" borderRadius="xl" borderWidth="1px" borderColor="border.default">

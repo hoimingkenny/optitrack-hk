@@ -1,0 +1,1 @@
+ALTER TABLE "options" ADD COLUMN "futu_code" text;

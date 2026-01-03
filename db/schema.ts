@@ -18,23 +18,6 @@ export const tradeTypes = ['OPEN', 'ADD', 'REDUCE', 'CLOSE'] as const;
 export type TradeType = typeof tradeTypes[number];
 
 // ============================================================================
-// Stocks Table
-// ============================================================================
-
-export const stocks = pgTable('stocks', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  
-  // Stock Information
-  name: text('name').notNull(),
-  symbol: text('symbol').notNull().unique(),
-  shares_per_contract: integer('shares_per_contract').notNull().default(500),
-  
-  // Metadata
-  created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
-
-// ============================================================================
 // Options Table (Parent)
 // ============================================================================
 
@@ -43,11 +26,13 @@ export const options = pgTable('options', {
   user_id: uuid('user_id').notNull(),
   
   // Option Contract Details
-  stock_id: uuid('stock_id').notNull().references(() => stocks.id, { onDelete: 'restrict' }),
+  stock_symbol: text('stock_symbol').notNull(),
+  stock_name: text('stock_name').notNull(),
   direction: text('direction').notNull().$type<TradeDirection>(),
   option_type: text('option_type').notNull().$type<OptionType>(),
   strike_price: numeric('strike_price').notNull(),
   expiry_date: date('expiry_date').notNull(),
+  futu_code: text('futu_code'), // Full Futu option code for price snapshots
   
   // Position Status
   status: text('status').notNull().default('Open').$type<TradeStatus>(),
@@ -59,7 +44,7 @@ export const options = pgTable('options', {
   // Ensure unique option per user
   uniqueOptionPerUser: unique('unique_option_per_user').on(
     table.user_id,
-    table.stock_id,
+    table.stock_symbol,
     table.direction,
     table.option_type,
     table.strike_price,
@@ -106,30 +91,30 @@ export type Option = typeof options.$inferSelect;
 export type NewOption = typeof options.$inferInsert;
 export type Trade = typeof trades.$inferSelect;
 export type NewTrade = typeof trades.$inferInsert;
-export type Stock = typeof stocks.$inferSelect;
-export type NewStock = typeof stocks.$inferInsert;
+export interface Stock {
+  id: string;
+  symbol: string;
+  short_name: string;
+  market: string;
+  status: 'active' | 'inactive';
+  shares_per_contract: number;
+  created_at: Date;
+  updated_at: Date;
+}
 
 // ============================================================================
 // Input Types for API
 // ============================================================================
 
-export interface CreateStockInput {
-  name: string;
-  symbol: string;
-  shares_per_contract?: number;
-}
-
-export interface UpdateStockInput {
-  name?: string;
-  shares_per_contract?: number;
-}
-
 export interface CreateOptionInput {
   stock_symbol: string;
+  stock_name?: string;
   direction: TradeDirection;
   option_type: OptionType;
   strike_price: number;
   expiry_date: string;
+  futu_code?: string;
+  status?: TradeStatus;
 }
 
 export interface CreateTradeInput {
@@ -200,15 +185,15 @@ export interface OptionPNL {
 }
 
 export interface OptionWithSummary extends Option {
-  stock_symbol: string;
   total_contracts: number;
   net_contracts: number;
   total_pnl: number;
+  unrealized_pnl?: number;
   trades_count: number;
+  shares_per_contract?: number;
 }
 
 export interface OptionWithTrades extends Option {
-  stock_symbol: string;
   trades: Trade[];
   summary: OptionPNL;
 }

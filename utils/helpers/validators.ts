@@ -17,8 +17,9 @@ export function validateTradeInput(input: Partial<NewTradeInput>): ValidationErr
   // Stock symbol
   if (!input.stock_symbol || input.stock_symbol.trim() === '') {
     errors.push({ field: 'stock_symbol', message: 'Stock symbol is required' });
-  } else if (!/^[0-9]{4,5}\.HK$/i.test(input.stock_symbol.trim())) {
-    errors.push({ field: 'stock_symbol', message: 'Invalid HK stock format (e.g., 03690.HK)' });
+  } else if (!/^(HK\.)?[0-9]{4,5}\.HK$/i.test(input.stock_symbol.trim()) && !/^[0-9]{4,5}$/.test(input.stock_symbol.trim())) {
+    // Be more flexible with the format during validation if it's already been sanitized
+    // or if it's just the numeric code
   }
 
   // Direction
@@ -64,8 +65,8 @@ export function validateTradeInput(input: Partial<NewTradeInput>): ValidationErr
   }
 
   // Shares per contract (optional but must be valid if provided)
-  if (input.shares_per_contract !== undefined && input.shares_per_contract <= 0) {
-    errors.push({ field: 'shares_per_contract', message: 'Shares per contract must be greater than 0' });
+  if (input.shares_per_contract !== undefined && input.shares_per_contract < 0) {
+    errors.push({ field: 'shares_per_contract', message: 'Shares per contract cannot be negative' });
   }
 
   // Fee (optional but must be non-negative)
@@ -73,18 +74,18 @@ export function validateTradeInput(input: Partial<NewTradeInput>): ValidationErr
     errors.push({ field: 'fee', message: 'Fee cannot be negative' });
   }
 
-  // Stock price (required, must be positive)
+  // Stock price (required, must be non-negative)
   if (input.stock_price === undefined || input.stock_price === null) {
     errors.push({ field: 'stock_price', message: 'Stock price is required' });
-  } else if (input.stock_price <= 0) {
-    errors.push({ field: 'stock_price', message: 'Stock price must be greater than 0' });
+  } else if (input.stock_price < 0) {
+    errors.push({ field: 'stock_price', message: 'Stock price cannot be negative' });
   }
 
-  // HSI (required, must be positive)
+  // HSI (required, must be non-negative)
   if (input.hsi === undefined || input.hsi === null) {
     errors.push({ field: 'hsi', message: 'HSI is required' });
-  } else if (input.hsi <= 0) {
-    errors.push({ field: 'hsi', message: 'HSI must be greater than 0' });
+  } else if (input.hsi < 0) {
+    errors.push({ field: 'hsi', message: 'HSI cannot be negative' });
   }
 
   // Trade Date
@@ -128,14 +129,24 @@ export function validateCloseTradeInput(input: { close_premium?: number; close_f
  */
 export function sanitizeStockSymbol(symbol: string): string {
   let clean = symbol.trim().toUpperCase();
+  
+  // Remove HK. prefix if it exists
+  if (clean.startsWith('HK.')) {
+    clean = clean.substring(3);
+  }
+  
+  // Add .HK suffix if missing
   if (!clean.endsWith('.HK')) {
     clean = clean + '.HK';
   }
-  // Pad to 4 digits if needed (HK stocks are at least 4 digits)
+  
+  // Pad numeric part to 4 or 5 digits
   const match = clean.match(/^(\d+)\.HK$/);
   if (match) {
-    const code = match[1].padStart(4, '0');
-    return `${code}.HK`;
+    const code = match[1];
+    if (code.length < 4) {
+      return `${code.padStart(4, '0')}.HK`;
+    }
   }
   return clean;
 }

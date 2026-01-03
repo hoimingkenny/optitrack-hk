@@ -34,7 +34,8 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
   const [isEditTradeModalOpen, setIsEditTradeModalOpen] = useState(false);
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null);
   const [displayDirectionForEdit, setDisplayDirectionForEdit] = useState('');
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeletingTrades, setIsDeletingTrades] = useState(false);
+  const [isDeletingOption, setIsDeletingOption] = useState(false);
 
   // Resolve params
   useEffect(() => {
@@ -183,7 +184,7 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
 
     if (!confirm(`Are you sure you want to delete ${selectedTradeIds.size} trade(s)?`)) return;
 
-    setIsDeleting(true);
+    setIsDeletingTrades(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       
@@ -205,7 +206,38 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
       console.error('Error deleting trades:', error);
       toast.error('Failed to delete trades');
     } finally {
-      setIsDeleting(false);
+      setIsDeletingTrades(false);
+    }
+  };
+
+  const handleDeleteOption = async () => {
+    if (!user || !resolvedParams?.id) return;
+    
+    if (!confirm('Are you sure you want to delete this entire option and all its trades? This action cannot be undone.')) {
+      return;
+    }
+
+    setIsDeletingOption(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const response = await fetch(`/api/options/${resolvedParams.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${session?.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete option');
+      }
+
+      toast.success('Option deleted successfully');
+      router.push('/trades');
+    } catch (error) {
+      console.error('Error deleting option:', error);
+      toast.error('Failed to delete option');
+    } finally {
+      setIsDeletingOption(false);
     }
   };
 
@@ -304,16 +336,26 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                   </Button>
                 </Box>
                 
-                <Flex alignItems="center" gap={3} mb={2}>
-                  <Heading size="xl" color="fg.default">
-                    {(() => {
-                      const strikePrice = typeof optionData.strike_price === 'string' ? parseFloat(optionData.strike_price) : optionData.strike_price;
-                      const optionName = `${optionData.stock_symbol} ${formatDateToYYYYMMDD(optionData.expiry_date)} ${strikePrice.toFixed(2)} ${optionData.option_type}`;
-                      return optionName;
-                    })()}
-                  </Heading>
-                  <DirectionBadge direction={optionData.direction} />
-                  <StatusBadge status={optionData.status} />
+                <Flex alignItems="center" justifyContent="space-between" mb={2}>
+                  <Flex alignItems="center" gap={3}>
+                    <Heading size="xl" color="fg.default">
+                      {(() => {
+                        const strikePrice = typeof optionData.strike_price === 'string' ? parseFloat(optionData.strike_price) : optionData.strike_price;
+                        const optionName = `${optionData.stock_symbol} ${formatDateToYYYYMMDD(optionData.expiry_date)} ${strikePrice.toFixed(2)} ${optionData.option_type}`;
+                        return optionName;
+                      })()}
+                    </Heading>
+                    <DirectionBadge direction={optionData.direction} />
+                    <StatusBadge status={optionData.status} />
+                  </Flex>
+                  <Button 
+                    variant="danger" 
+                    size="sm" 
+                    onClick={handleDeleteOption}
+                    isLoading={isDeletingOption}
+                  >
+                    Remove Option
+                  </Button>
                 </Flex>
               </Box>
 
@@ -361,17 +403,19 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                       {formatPNL(optionData.summary.netPNL)}
                     </Text>
                   </Box>
-                  <Box>
-                    <Text fontSize="sm" color="fg.muted" mb={1}>Covering cash if exercised</Text>
-                    <Text fontSize="2xl" fontWeight="bold" color="fg.default">
-                      {(() => {
-                        const strikePrice = typeof optionData.strike_price === 'string' ? parseFloat(optionData.strike_price) : optionData.strike_price;
-                        const sharesPerContract = optionData.trades[0]?.shares_per_contract || 500;
-                        const amount = optionData.summary.netContracts * sharesPerContract * strikePrice;
-                        return formatHKD(amount);
-                      })()}
-                    </Text>
-                  </Box>
+                  {!(optionData.direction === 'Sell' && optionData.option_type === 'Call') && (
+                    <Box>
+                      <Text fontSize="sm" color="fg.muted" mb={1}>Covering cash if exercised</Text>
+                      <Text fontSize="2xl" fontWeight="bold" color="fg.default">
+                        {(() => {
+                          const strikePrice = typeof optionData.strike_price === 'string' ? parseFloat(optionData.strike_price) : optionData.strike_price;
+                          const sharesPerContract = optionData.trades[0]?.shares_per_contract || 500;
+                          const amount = optionData.summary.netContracts * sharesPerContract * strikePrice;
+                          return formatHKD(amount);
+                        })()}
+                      </Text>
+                    </Box>
+                  )}
                   <Box>
                     <Text fontSize="sm" color="fg.muted" mb={1}>Covering shares if exercised</Text>
                     <Text fontSize="2xl" fontWeight="bold" color="fg.default">
@@ -486,7 +530,7 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
               </Box>
 
               {/* Action Buttons */}
-              {optionData.status === 'Open' && (
+              {(optionData.status === 'Open' || (optionData.status === 'Expired' && optionData.summary.netContracts > 0)) && (
                 <Flex gap={3}>
                   <Button onClick={() => setIsAddTradeModalOpen(true)}>
                     Add Trade
@@ -495,7 +539,7 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                     <Button 
                       variant="danger" 
                       onClick={handleDeleteSelectedTrades}
-                      isLoading={isDeleting}
+                      isLoading={isDeletingTrades}
                     >
                       Delete Selected ({selectedTradeIds.size})
                     </Button>

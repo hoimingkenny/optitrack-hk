@@ -8,6 +8,13 @@
       "when": 1767275233942,
       "tag": "0000_quiet_kitty_pryde",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1767439640783,
+      "tag": "0001_odd_thunderbolt",
+      "breakpoints": true
     }
   ]
 }

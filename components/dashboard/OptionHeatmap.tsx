@@ -1,8 +1,16 @@
 'use client';
 
-import { Box, Flex, Text, Button } from '@chakra-ui/react';
+import { Box, Flex, Text, Button, Popover, IconButton, Portal } from '@chakra-ui/react';
 import type { OptionWithSummary } from '@/db/schema';
 import { useMemo, useState } from 'react';
+
+function InfoIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+}
 
 interface OptionHeatmapProps {
   options: OptionWithSummary[];
@@ -56,6 +64,14 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
     return dates;
   }, [selectedYear]);
 
+  // Color maps for different intensities (1-5)
+  const colorMaps = {
+    sellPut: ['#FBDADA', '#F7B5B5', '#EE7A7A', '#E44D4D', '#D73535'],
+    sellCall: ['#FEE2DF', '#FDC5C0', '#FBA8A1', '#FA8B81', '#F96E5B'],
+    buyCall: ['#DCF2E5', '#BEE3D0', '#9AE1B5', '#68D391', '#48BB78'], // green.500 shades
+    buyPut: ['#E1EFFE', '#BEE3F8', '#90CDF4', '#63B3ED', '#4299E1'], // blue.500 shades
+  };
+
   // Process option expiration for each date
   const getActivityForDate = (date: Date) => {
     const dateStr = date.toISOString().split('T')[0];
@@ -71,26 +87,25 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
     if (count === 0) return { color: 'bg.muted', label: 'No options expiring', intensity: 0 };
 
     // Intensity levels (1-5) based on count
+    // If we have many options, we might want to scale this differently, 
+    // but for now 1-5+ is a good start
     const intensity = Math.min(count, 5);
+    const index = intensity - 1;
     
-    // Determine color based on direction
-    const hasSell = expiringOptions.some(o => o.direction === 'Sell');
-    const hasBuy = expiringOptions.some(o => o.direction === 'Buy');
+    // Determine color based on direction and type
+    const hasSellPut = expiringOptions.some(o => o.direction === 'Sell' && o.option_type === 'Put');
+    const hasSellCall = expiringOptions.some(o => o.direction === 'Sell' && o.option_type === 'Call');
+    const hasBuyCall = expiringOptions.some(o => o.direction === 'Buy' && o.option_type === 'Call');
+    const hasBuyPut = expiringOptions.some(o => o.direction === 'Buy' && o.option_type === 'Put');
 
-    if (hasSell) {
-      const redScales = ['red.100', 'red.300', 'red.500', 'red.700', 'red.900'];
-      return { 
-        color: redScales[intensity - 1], 
-        label: `${count} option(s) expiring (Sell)`, 
-        intensity 
-      };
-    } else if (hasBuy) {
-      const greenScales = ['green.100', 'green.300', 'green.500', 'green.700', 'green.900'];
-      return { 
-        color: greenScales[intensity - 1], 
-        label: `${count} option(s) expiring (Buy)`, 
-        intensity 
-      };
+    if (hasSellPut) {
+      return { color: colorMaps.sellPut[index], label: `${count} option(s) expiring (Sell Put)`, intensity };
+    } else if (hasSellCall) {
+      return { color: colorMaps.sellCall[index], label: `${count} option(s) expiring (Sell Call)`, intensity };
+    } else if (hasBuyCall) {
+      return { color: colorMaps.buyCall[index], label: `${count} option(s) expiring (Buy Call)`, intensity };
+    } else if (hasBuyPut) {
+      return { color: colorMaps.buyPut[index], label: `${count} option(s) expiring (Buy Put)`, intensity };
     }
     
     return { color: 'bg.muted', label: 'No options expiring', intensity: 0 };
@@ -139,9 +154,97 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
       overflowX="auto"
     >
       <Flex justifyContent="space-between" alignItems="center" mb={4}>
-        <Text fontSize="lg" fontWeight="semibold" color="fg.default">
-          Option Expiration Heatmap ({selectedYear})
-        </Text>
+        <Flex alignItems="center" gap={2}>
+          <Text fontSize="lg" fontWeight="semibold" color="fg.default">
+            Option Expiration Heatmap
+          </Text>
+          <Popover.Root positioning={{ placement: 'right-start' }}>
+            <Popover.Trigger asChild>
+              <IconButton 
+                variant="ghost" 
+                size="xs" 
+                aria-label="Show color legend" 
+                color="fg.muted"
+                _hover={{ color: "fg.default", bg: "bg.muted" }}
+              >
+                <InfoIcon className="w-4 h-4" />
+              </IconButton>
+            </Popover.Trigger>
+            <Popover.Positioner zIndex="popover">
+              <Popover.Content width="240px" p={4} borderRadius="lg" bg="bg.surface" boxShadow="lg" border="1px solid" borderColor="border.default">
+                <Popover.Arrow />
+                <Popover.Body>
+                  <Flex direction="column" gap={4}>
+                    <Text fontWeight="semibold" fontSize="sm">Color Legend</Text>
+                    
+                    <Flex direction="column" gap={3}>
+                      <Flex alignItems="center" gap={2} fontSize="xs">
+                        <Box 
+                          w="10px" 
+                          h="10px" 
+                          borderRadius="sm" 
+                          border="1px solid" 
+                          borderColor="fg.default" 
+                          boxShadow="0 0 0 1px var(--chakra-colors-fg-default)"
+                        />
+                        <Text>Today</Text>
+                      </Flex>
+
+                      <Flex alignItems="center" gap={2} fontSize="xs">
+                        <Box w="10px" h="10px" bg="bg.muted" borderRadius="sm" />
+                        <Text>No Expiry</Text>
+                      </Flex>
+                      
+                      <Box borderTop="1px solid" borderColor="border.subtle" pt={2} />
+
+                      <Flex direction="column" gap={2}>
+                        <Flex direction="column" gap={1}>
+                          <Text fontSize="11px" fontWeight="medium">Sell Put</Text>
+                          <Flex gap={1}>
+                            {colorMaps.sellPut.map((color, i) => (
+                              <Box key={i} w="12px" h="12px" bg={color} borderRadius="sm" title={`Level ${i+1}`} />
+                            ))}
+                          </Flex>
+                        </Flex>
+
+                        <Flex direction="column" gap={1}>
+                          <Text fontSize="11px" fontWeight="medium">Sell Call</Text>
+                          <Flex gap={1}>
+                            {colorMaps.sellCall.map((color, i) => (
+                              <Box key={i} w="12px" h="12px" bg={color} borderRadius="sm" title={`Level ${i+1}`} />
+                            ))}
+                          </Flex>
+                        </Flex>
+
+                        <Flex direction="column" gap={1}>
+                          <Text fontSize="11px" fontWeight="medium">Buy Call</Text>
+                          <Flex gap={1}>
+                            {colorMaps.buyCall.map((color, i) => (
+                              <Box key={i} w="12px" h="12px" bg={color} borderRadius="sm" title={`Level ${i+1}`} />
+                            ))}
+                          </Flex>
+                        </Flex>
+
+                        <Flex direction="column" gap={1}>
+                          <Text fontSize="11px" fontWeight="medium">Buy Put</Text>
+                          <Flex gap={1}>
+                            {colorMaps.buyPut.map((color, i) => (
+                              <Box key={i} w="12px" h="12px" bg={color} borderRadius="sm" title={`Level ${i+1}`} />
+                            ))}
+                          </Flex>
+                        </Flex>
+                      </Flex>
+                    </Flex>
+                    
+                    <Text fontSize="10px" color="fg.muted" pt={1}>
+                      Intensity (1-5+) increases with the number of options expiring on that date.
+                    </Text>
+                  </Flex>
+                </Popover.Body>
+              </Popover.Content>
+            </Popover.Positioner>
+          </Popover.Root>
+        </Flex>
       </Flex>
       
       <Flex direction={{ base: "column", lg: "row" }} gap={6}>
@@ -208,6 +311,7 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
 
                         const activity = getActivityForDate(date);
                         const dateStr = date.toLocaleDateString('en-HK', { month: 'short', day: 'numeric', year: 'numeric' });
+                        const isToday = date.toDateString() === new Date().toDateString();
 
                         return (
                           <Box
@@ -216,9 +320,21 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
                             h="12px"
                             borderRadius="sm"
                             bg={activity.color}
-                            title={`${dateStr}: ${activity.label}`}
-                            _hover={{ opacity: 0.8, cursor: 'pointer', transform: 'scale(1.2)' }}
-                            transition="all 0.1s"
+                            title={`${dateStr}: ${activity.label}${isToday ? ' (Today)' : ''}`}
+                            _hover={{ 
+                              cursor: 'pointer', 
+                              transform: 'scale(1.3)',
+                              outline: '2px solid',
+                              outlineColor: activity.color === 'bg.muted' ? 'gray.400' : activity.color,
+                              outlineOffset: '1px',
+                              zIndex: 10,
+                              opacity: 1
+                            }}
+                            transition="all 0.15s ease-in-out"
+                            position="relative"
+                            border={isToday ? "1px solid" : "none"}
+                            borderColor={isToday ? "fg.default" : "transparent"}
+                            boxShadow={isToday ? "0 0 0 1px var(--chakra-colors-fg-default)" : "none"}
                           />
                         );
                       })}
@@ -226,35 +342,6 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
                   ))}
                 </Flex>
               </Box>
-            </Flex>
-          </Flex>
-          
-          {/* Legend */}
-          <Flex gap={6} mt={6} fontSize="xs" color="fg.muted" alignItems="center" flexWrap="wrap" justifyContent="center">
-            <Flex alignItems="center" gap={2}>
-              <Text>Less</Text>
-              <Flex gap={1}>
-                <Box w="10px" h="10px" bg="bg.muted" borderRadius="sm" title="0 options expiring" />
-                <Box w="10px" h="10px" bg="green.100" borderRadius="sm" title="1 option expiring" />
-                <Box w="10px" h="10px" bg="green.300" borderRadius="sm" title="2 options expiring" />
-                <Box w="10px" h="10px" bg="green.500" borderRadius="sm" title="3 options expiring" />
-                <Box w="10px" h="10px" bg="green.700" borderRadius="sm" title="4 options expiring" />
-                <Box w="10px" h="10px" bg="green.900" borderRadius="sm" title="5+ options expiring" />
-              </Flex>
-              <Text>More (Buy)</Text>
-            </Flex>
-
-            <Flex alignItems="center" gap={2}>
-              <Text>Less</Text>
-              <Flex gap={1}>
-                <Box w="10px" h="10px" bg="bg.muted" borderRadius="sm" title="0 options expiring" />
-                <Box w="10px" h="10px" bg="red.100" borderRadius="sm" title="1 option expiring" />
-                <Box w="10px" h="10px" bg="red.300" borderRadius="sm" title="2 options expiring" />
-                <Box w="10px" h="10px" bg="red.500" borderRadius="sm" title="3 options expiring" />
-                <Box w="10px" h="10px" bg="red.700" borderRadius="sm" title="4 options expiring" />
-                <Box w="10px" h="10px" bg="red.900" borderRadius="sm" title="5+ options expiring" />
-              </Flex>
-              <Text>More (Sell)</Text>
             </Flex>
           </Flex>
         </Flex>

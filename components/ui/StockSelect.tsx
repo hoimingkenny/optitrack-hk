@@ -7,6 +7,8 @@ import {
   Text, 
   Spinner, 
   Portal,
+  Flex,
+  Badge,
   Field,
   Input as ChakraInput
 } from '@chakra-ui/react';
@@ -65,10 +67,21 @@ export default function StockSelect({ label, error, value, onSelect, required }:
       setIsLoading(true);
       setHasError(false);
       try {
-        const response = await fetch(`/api/stocks/search?q=${encodeURIComponent(search)}`);
+        const response = await fetch(`/api/futu/search?q=${encodeURIComponent(search)}`);
         if (response.ok) {
           const data = await response.json();
-          setResults(data);
+          // Map Futu results to Stock interface
+          const mappedStocks: Stock[] = data.map((item: any) => ({
+            id: item.code,
+            symbol: item.code,
+            short_name: item.name,
+            market: item.market === 1 ? 'HK' : 'US',
+            status: 'active',
+            shares_per_contract: item.market === 1 ? 500 : 100,
+            created_at: new Date(),
+            updated_at: new Date()
+          }));
+          setResults(mappedStocks);
           // Only auto-open if the search text is different from the confirmed value
           if (isFocused && search !== value) setIsOpen(true);
         } else {
@@ -97,6 +110,7 @@ export default function StockSelect({ label, error, value, onSelect, required }:
     onSelect(stock);
     setSearch(stock.symbol);
     setIsOpen(false);
+    setIsFocused(false);
   };
 
   const inputId = label?.toLowerCase().replace(/\s/g, '-');
@@ -169,8 +183,13 @@ export default function StockSelect({ label, error, value, onSelect, required }:
                   handleSelect(stock);
                 }}
               >
-                <Text fontWeight="bold" fontSize="sm">{stock.symbol}</Text>
-                <Text fontSize="xs" color="fg.subtle">{stock.name}</Text>
+                <Flex justify="space-between" align="center">
+                  <VStack align="start" gap={0}>
+                    <Text fontWeight="bold" fontSize="sm">{stock.symbol}</Text>
+                    <Text fontSize="xs" color="fg.subtle">{stock.short_name}</Text>
+                  </VStack>
+                  <Badge size="xs">{stock.market}</Badge>
+                </Flex>
               </Box>
             ))}
             
