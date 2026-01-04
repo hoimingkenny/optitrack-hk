@@ -44,6 +44,7 @@ export default function EditTradeModal({
     premium: '',
     contracts: '',
     fee: '0',
+    margin_percent: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -57,6 +58,7 @@ export default function EditTradeModal({
         premium: initialData.premium.toString(),
         contracts: initialData.contracts.toString(),
         fee: initialData.fee.toString(),
+        margin_percent: initialData.margin_percent?.toString() || '',
       });
       setErrors({});
     }
@@ -95,6 +97,7 @@ export default function EditTradeModal({
       premium,
       contracts,
       fee: parseFloat(formData.fee) || 0,
+      margin_percent: formData.margin_percent ? parseFloat(formData.margin_percent) : undefined,
       totalPremium,
     });
   };
@@ -178,6 +181,16 @@ export default function EditTradeModal({
             value={formData.fee}
             onChange={(e) => handleChange('fee', e.target.value)}
             error={errors.fee}
+          />
+          <Input
+            label="Margin %"
+            type="number"
+            step="0.1"
+            min="0"
+            max="100"
+            placeholder="e.g., 20"
+            value={formData.margin_percent}
+            onChange={(e) => handleChange('margin_percent', e.target.value)}
           />
         </SimpleGrid>
       </VStack>

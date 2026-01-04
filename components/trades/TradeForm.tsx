@@ -25,6 +25,7 @@ interface TradeFormData {
   fee?: string;
   trade_date?: string;
   futu_code?: string;
+  margin_percent?: string;
 }
 
 interface TradeFormProps {
@@ -62,6 +63,7 @@ export default function TradeForm({
     fee: initialData?.fee || '',
     trade_date: initialData?.trade_date || formatDateForInput(new Date()),
     futu_code: initialData?.futu_code || '',
+    margin_percent: initialData?.margin_percent || '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -199,6 +201,7 @@ export default function TradeForm({
       premium: parseNumberInput(formData.premium),
       contracts: parseNumberInput(formData.contracts),
       fee: parseNumberInput(formData.fee || '0'),
+      margin_percent: parseNumberInput(formData.margin_percent || '0'),
       stock_price: 0, // Auto-fill later
       hsi: 0, // Auto-fill later
       trade_date: formData.trade_date,
@@ -450,8 +453,8 @@ export default function TradeForm({
           </Box>
         )}
 
-        {/* Row 5: Fee */}
-        <Box w="full">
+        {/* Row 5: Fee and Margin */}
+        <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} w="full">
           <Input
             label="Fee (HKD)"
             type="number"
@@ -462,7 +465,18 @@ export default function TradeForm({
             onChange={(e) => handleChange('fee', e.target.value)}
             error={errors.fee}
           />
-        </Box>
+          <Input
+            label="Margin %"
+            type="number"
+            step="0.1"
+            min="0"
+            max="100"
+            placeholder="e.g., 20"
+            value={formData.margin_percent}
+            onChange={(e) => handleChange('margin_percent', e.target.value)}
+            error={errors.margin_percent}
+          />
+        </SimpleGrid>
 
         <Flex justifyContent="flex-end" gap={3} mt={4}>
           {onCancel && (

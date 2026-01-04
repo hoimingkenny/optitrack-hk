@@ -30,7 +30,8 @@ export interface Trade {
   stock_price: number; // Stock price at open (required)
   hsi: number; // HSI at open (required)
   trade_date: string; // ISO timestamp, auto now
-  
+  margin_percent?: string | null;
+
   // Closing Details (nullable until closed)
   close_premium?: number | null;
   close_fee?: number | null;
@@ -58,6 +59,7 @@ export interface NewTradeInput {
   stock_price: number; // Required
   hsi: number; // Required
   trade_date?: string;
+  margin_percent?: number;
 }
 
 export interface CloseTradeInput {

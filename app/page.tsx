@@ -211,6 +211,7 @@ export default function Home() {
           hsi: data.hsi,
           trade_date: data.trade_date,
           shares_per_contract: data.shares_per_contract,
+          margin_percent: data.margin_percent,
         },
       };
       

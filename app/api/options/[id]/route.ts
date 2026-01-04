@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getOptionById, updateOptionStatus, deleteOption } from '@/db/repositories/options';
 import { UpdateOptionInput } from '@/db/schema';
+import globalClient, { toNumber } from '@/utils/futu/client';
+import { calculateOptionPNL } from '@/utils/helpers/option-calculator';
 
 // Create Supabase client for API routes
 function getSupabaseClient(request: NextRequest) {
@@ -39,6 +41,37 @@ export async function GET(
 
     if (!optionWithTrades) {
       return NextResponse.json({ error: 'Option not found' }, { status: 404 });
+    }
+
+    // If option is Open and has futu_code, fetch live snapshot
+    if (optionWithTrades.status === 'Open' && optionWithTrades.futu_code) {
+      try {
+        const [market, code] = optionWithTrades.futu_code.split('.');
+        const snapshots = await globalClient.getSecuritySnapshots([{
+          market: market === 'HK' ? 1 : 2,
+          code: code
+        }]);
+
+        if (snapshots && snapshots.length > 0) {
+          const snapshot = snapshots[0];
+          const currentPrice = toNumber(snapshot.basic.curPrice || snapshot.basic.lastPrice);
+          
+          if (currentPrice) {
+            // Recalculate PNL with current price
+            const pnlSummary = calculateOptionPNL(optionWithTrades, optionWithTrades.trades, currentPrice);
+            
+            // Return enriched data
+            return NextResponse.json({
+              ...optionWithTrades,
+              currentPrice,
+              summary: pnlSummary
+            }, { status: 200 });
+          }
+        }
+      } catch (futuError) {
+        console.error('Error fetching Futu snapshot:', futuError);
+        // Fallback to original data if Futu fails
+      }
     }
 
     return NextResponse.json(optionWithTrades, { status: 200 });

@@ -72,7 +72,7 @@ export async function createOptionWithTrade(
       .values({
         option_id: optionId,
         user_id: userId,
-        trade_type: existingOption ? 'ADD' : 'OPEN',
+        trade_type: optionData.direction === 'Sell' ? 'OPEN_SELL' : 'OPEN_BUY',
         contracts: tradeData.contracts,
         premium: tradeData.premium.toString(),
         shares_per_contract: tradeData.shares_per_contract ?? 500,
@@ -81,6 +81,7 @@ export async function createOptionWithTrade(
         hsi: tradeData.hsi.toString(),
         trade_date: tradeData.trade_date ? new Date(tradeData.trade_date) : new Date(),
         notes: tradeData.notes,
+        margin_percent: tradeData.margin_percent?.toString(),
       })
       .returning();
 
@@ -99,7 +100,7 @@ export async function getOptionsWithSummary(
   const result = await db
     .select({
       option: options,
-      trades: sql<Trade[]>`json_agg(${trades}.*)`.as('trades'),
+      trades: sql<Trade[]>`json_agg(${trades}.* ORDER BY ${trades.trade_date} ASC, ${trades.created_at} ASC)`.as('trades'),
     })
     .from(options)
     .leftJoin(trades, eq(trades.option_id, options.id))
@@ -113,7 +114,7 @@ export async function getOptionsWithSummary(
 
   return result.map((row) => {
     const tradesData: Trade[] = Array.isArray(row.trades) 
-      ? row.trades.filter((t: Trade | null) => t !== null) 
+      ? row.trades.filter((t: Trade | null) => t !== null && t.id != null) 
       : [];
     const pnl = calculateOptionPNL({ ...row.option } as any, tradesData);
     const netContracts = calculateNetContracts(tradesData);
@@ -148,7 +149,7 @@ export async function getOptionById(
     .select()
     .from(trades)
     .where(eq(trades.option_id, optionId))
-    .orderBy(trades.trade_date);
+    .orderBy(trades.trade_date, trades.created_at);
 
   const summary = calculateOptionPNL({ ...option } as any, optionTrades);
 

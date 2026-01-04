@@ -16,6 +16,7 @@ interface AddTradeModalProps {
   onSubmit: (data: any) => Promise<void>;
   optionName: string;
   sharesPerContract: number;
+  optionDirection: TradeDirection;
   minDate?: string;
   isLoading?: boolean;
 }
@@ -31,6 +32,7 @@ export default function AddTradeModal({
   onSubmit,
   optionName,
   sharesPerContract,
+  optionDirection,
   minDate,
   isLoading = false,
 }: AddTradeModalProps) {
@@ -40,6 +42,7 @@ export default function AddTradeModal({
     premium: '',
     contracts: '',
     fee: '0',
+    margin_percent: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -53,6 +56,7 @@ export default function AddTradeModal({
         premium: '',
         contracts: '',
         fee: '0',
+        margin_percent: '',
       });
       setErrors({});
     }
@@ -92,9 +96,12 @@ export default function AddTradeModal({
       premium,
       contracts,
       fee: parseFloat(formData.fee) || 0,
+      margin_percent: formData.margin_percent ? parseFloat(formData.margin_percent) : undefined,
       totalPremium,
     });
   };
+
+  const isClosing = formData.direction !== optionDirection;
 
   return (
     <Modal
@@ -175,6 +182,18 @@ export default function AddTradeModal({
             onChange={(e) => handleChange('fee', e.target.value)}
             error={errors.fee}
           />
+          {!isClosing && (
+            <Input
+              label="Margin %"
+              type="number"
+              step="0.1"
+              min="0"
+              max="100"
+              placeholder="e.g., 20"
+              value={formData.margin_percent}
+              onChange={(e) => handleChange('margin_percent', e.target.value)}
+            />
+          )}
         </SimpleGrid>
       </VStack>
     </Modal>

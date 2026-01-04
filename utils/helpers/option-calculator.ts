@@ -17,15 +17,29 @@ export function isSellDirection(direction: TradeDirection): boolean {
 }
 
 /**
+ * Check if trade type is an opening trade (entry)
+ */
+export function isOpeningTrade(tradeType: string): boolean {
+  return tradeType === 'OPEN_SELL' || tradeType === 'OPEN_BUY' || tradeType === 'OPEN' || tradeType === 'ADD';
+}
+
+/**
+ * Check if trade type is a closing trade (exit)
+ */
+export function isClosingTrade(tradeType: string): boolean {
+  return tradeType === 'CLOSE_BUY' || tradeType === 'CLOSE_SELL' || tradeType === 'REDUCE' || tradeType === 'CLOSE';
+}
+
+/**
  * Calculate net contracts from all trades
  * OPEN and ADD increase position, REDUCE and CLOSE decrease position
  */
 export function calculateNetContracts(trades: Trade[]): number {
   return trades.reduce((total, trade) => {
     const contracts = parseNumeric(trade.contracts);
-    if (trade.trade_type === 'OPEN' || trade.trade_type === 'ADD') {
+    if (isOpeningTrade(trade.trade_type)) {
       return total + contracts;
-    } else if (trade.trade_type === 'REDUCE' || trade.trade_type === 'CLOSE') {
+    } else if (isClosingTrade(trade.trade_type)) {
       return total - contracts;
     }
     return total;
@@ -37,7 +51,7 @@ export function calculateNetContracts(trades: Trade[]): number {
  */
 export function calculateTotalOpened(trades: Trade[]): number {
   return trades
-    .filter(t => t.trade_type === 'OPEN' || t.trade_type === 'ADD')
+    .filter(t => isOpeningTrade(t.trade_type))
     .reduce((sum, trade) => sum + parseNumeric(trade.contracts), 0);
 }
 
@@ -46,29 +60,77 @@ export function calculateTotalOpened(trades: Trade[]): number {
  */
 export function calculateTotalClosed(trades: Trade[]): number {
   return trades
-    .filter(t => t.trade_type === 'REDUCE' || t.trade_type === 'CLOSE')
+    .filter(t => isClosingTrade(t.trade_type))
     .reduce((sum, trade) => sum + parseNumeric(trade.contracts), 0);
 }
 
 /**
- * Calculate average entry premium (weighted by contracts)
+ * Calculate position statistics using chronological processing
+ * This handles partial closes, final closes, and re-opens correctly
+ */
+function calculatePositionStats(trades: Trade[], direction?: TradeDirection) {
+  // Sort trades by date to ensure chronological processing
+  // Use created_at as tie-breaker for trades on the same day
+  const sortedTrades = [...trades].sort((a, b) => {
+    const timeA = new Date(a.trade_date).getTime();
+    const timeB = new Date(b.trade_date).getTime();
+    if (timeA !== timeB) return timeA - timeB;
+    
+    // Tie-breaker: created_at
+    const createdA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const createdB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return createdA - createdB;
+  });
+
+  let netContracts = 0;
+  let avgCost = 0;
+  let realizedPNL = 0;
+  
+  const isSell = direction === 'Sell';
+
+  for (const trade of sortedTrades) {
+    const contracts = parseNumeric(trade.contracts);
+    const premium = parseNumeric(trade.premium);
+    const shares = parseNumeric(trade.shares_per_contract) || DEFAULT_SHARES_PER_CONTRACT;
+    
+    if (isOpeningTrade(trade.trade_type)) {
+      // Weighted Average for Opening
+      const totalCost = (netContracts * avgCost) + (contracts * premium);
+      netContracts += contracts;
+      avgCost = netContracts > 0 ? totalCost / netContracts : 0;
+    } else {
+      // Closing
+      const closeContracts = Math.min(contracts, netContracts); // Clamp to available
+      
+      if (closeContracts > 0) {
+        if (direction) {
+          if (isSell) {
+            // Seller: Profit = (Entry - Exit)
+            realizedPNL += (avgCost - premium) * closeContracts * shares;
+          } else {
+            // Buyer: Profit = (Exit - Entry)
+            realizedPNL += (premium - avgCost) * closeContracts * shares;
+          }
+        }
+        netContracts -= closeContracts;
+      }
+      
+      // If position closed fully, reset avgCost
+      if (netContracts <= 0) {
+        netContracts = 0;
+        avgCost = 0;
+      }
+    }
+  }
+
+  return { netContracts, avgCost, realizedPNL };
+}
+
+/**
+ * Calculate average entry premium (weighted by contracts of CURRENT position)
  */
 export function calculateAverageEntryPremium(trades: Trade[]): number {
-  const openTrades = trades.filter(t => 
-    t.trade_type === 'OPEN' || t.trade_type === 'ADD'
-  );
-  
-  const totalPremiumPaid = openTrades.reduce((sum, trade) => {
-    const premium = parseNumeric(trade.premium);
-    const contracts = parseNumeric(trade.contracts);
-    return sum + (premium * contracts);
-  }, 0);
-  
-  const totalContracts = openTrades.reduce((sum, trade) => 
-    sum + parseNumeric(trade.contracts), 0
-  );
-  
-  return totalContracts > 0 ? totalPremiumPaid / totalContracts : 0;
+  return calculatePositionStats(trades).avgCost;
 }
 
 /**
@@ -76,7 +138,7 @@ export function calculateAverageEntryPremium(trades: Trade[]): number {
  */
 export function calculateAverageExitPremium(trades: Trade[]): number {
   const closeTrades = trades.filter(t => 
-    t.trade_type === 'REDUCE' || t.trade_type === 'CLOSE'
+    isClosingTrade(t.trade_type)
   );
   
   const totalPremiumReceived = closeTrades.reduce((sum, trade) => {
@@ -158,6 +220,39 @@ export function calculateUnrealizedPNL(
 }
 
 /**
+ * Calculate total margin required for current position
+ */
+export function calculateTotalMargin(
+  option: Option,
+  trades: Trade[]
+): number {
+  const netContracts = calculateNetContracts(trades);
+  if (netContracts === 0) return 0;
+
+  const openTrades = trades.filter(t => 
+    isOpeningTrade(t.trade_type)
+  );
+
+  let weightedMarginSum = 0;
+  let totalOpenContracts = 0;
+
+  openTrades.forEach(trade => {
+    const contracts = parseNumeric(trade.contracts);
+    const marginPercent = parseNumeric(trade.margin_percent);
+    weightedMarginSum += contracts * marginPercent;
+    totalOpenContracts += contracts;
+  });
+
+  const avgMarginPercent = totalOpenContracts > 0 ? weightedMarginSum / totalOpenContracts : 0;
+  const shares = parseNumeric(trades[0]?.shares_per_contract) || DEFAULT_SHARES_PER_CONTRACT;
+  const strikePrice = parseNumeric(option.strike_price);
+
+  // Margin = Notional Value * Margin %
+  // Using Strike Price for Notional Value as it represents the liability
+  return netContracts * shares * strikePrice * (avgMarginPercent / 100);
+}
+
+/**
  * Calculate complete PNL summary for an option
  * PNL = sum(premium * contracts * shares) for all trades - total fees
  */
@@ -168,31 +263,48 @@ export function calculateOptionPNL(
 ): OptionPNL {
   const totalOpened = calculateTotalOpened(trades);
   const totalClosed = calculateTotalClosed(trades);
-  const netContracts = calculateNetContracts(trades);
-  const avgEntryPremium = calculateAverageEntryPremium(trades);
+  const { netContracts, avgCost, realizedPNL } = calculatePositionStats(trades, option.direction);
+  const avgEntryPremium = avgCost;
   const avgExitPremium = calculateAverageExitPremium(trades);
   const totalFees = calculateTotalFees(trades);
+  const totalMargin = calculateTotalMargin(option, trades);
   
   // Calculate PNL as sum of all (premium * contracts * shares) - fees
   // For Sell options: Received (+) at open, Paid (-) at close
   // For Buy options: Paid (-) at open, Received (+) at close
   const isSell = isSellDirection(option.direction);
   
-  const grossPNL = trades.reduce((sum, trade) => {
+  const totalPremiumCashFlow = trades.reduce((sum, trade) => {
     const premium = parseNumeric(trade.premium);
     const contracts = parseNumeric(trade.contracts);
     const shares = parseNumeric(trade.shares_per_contract) || DEFAULT_SHARES_PER_CONTRACT;
     const amount = premium * contracts * shares;
     
-    if (trade.trade_type === 'OPEN' || trade.trade_type === 'ADD') {
+    if (isOpeningTrade(trade.trade_type)) {
       return sum + (isSell ? amount : -amount);
     } else {
       return sum + (isSell ? -amount : amount);
     }
   }, 0);
 
-  const unrealizedPNL = calculateUnrealizedPNL(option, trades, currentPremium);
-  const netPNL = grossPNL - totalFees + unrealizedPNL;
+  // Recalculate unrealized PNL using the chronological stats
+  const shares = parseNumeric(trades[0]?.shares_per_contract) || DEFAULT_SHARES_PER_CONTRACT;
+  let unrealizedPNL = 0;
+  if (netContracts > 0 && currentPremium !== undefined) {
+    if (isSell) {
+      unrealizedPNL = (avgEntryPremium - currentPremium) * netContracts * shares;
+    } else {
+      unrealizedPNL = (currentPremium - avgEntryPremium) * netContracts * shares;
+    }
+  }
+
+  const netPNL = realizedPNL + unrealizedPNL - totalFees;
+
+  // Calculate market value of current position (Cost to Close)
+  // Market Value = Net Contracts * Current Price * Shares
+  const marketValue = (netContracts > 0 && currentPremium !== undefined)
+    ? netContracts * currentPremium * (parseNumeric(trades[0]?.shares_per_contract) || DEFAULT_SHARES_PER_CONTRACT)
+    : 0;
   
   // Calculate return percentage based on total premium invested
   const totalInvested = avgEntryPremium * totalOpened * (parseNumeric(trades[0]?.shares_per_contract) || DEFAULT_SHARES_PER_CONTRACT);
@@ -205,11 +317,13 @@ export function calculateOptionPNL(
     avgEntryPremium,
     avgExitPremium,
     totalFees,
-    realizedPNL: grossPNL, 
+    realizedPNL, 
     unrealizedPNL,
-    grossPNL: grossPNL + unrealizedPNL,
+    grossPNL: totalPremiumCashFlow, // Keeping this as cash flow for reference if needed
     netPNL,
     returnPercentage,
+    totalMargin,
+    marketValue,
   };
 }
 
@@ -248,12 +362,12 @@ export function validateTrade(
   }
   
   // ADD, REDUCE, CLOSE require existing position
-  if (newTrade.trade_type !== 'OPEN' && trades.length === 0) {
+  if (!isOpeningTrade(newTrade.trade_type) && trades.length === 0) {
     return { valid: false, error: 'Cannot add trade - no position exists' };
   }
   
   // REDUCE and CLOSE cannot exceed current position
-  if (newTrade.trade_type === 'REDUCE' || newTrade.trade_type === 'CLOSE') {
+  if (isClosingTrade(newTrade.trade_type)) {
     if (newTrade.contracts > netContracts) {
       return { 
         valid: false, 

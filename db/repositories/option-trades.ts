@@ -1,7 +1,7 @@
 import { db } from '@/db';
 import { trades, options, Trade, NewTrade, CreateTradeInput, UpdateTradeInput } from '@/db/schema';
 import { eq, and, desc } from 'drizzle-orm';
-import { validateTrade, calculateNetContracts } from '@/utils/helpers/option-calculator';
+import { validateTrade, calculateNetContracts, isClosingTrade } from '@/utils/helpers/option-calculator';
 
 /**
  * Create a new trade for an option
@@ -52,13 +52,14 @@ export async function createTrade(
       hsi: tradeData.hsi.toString(),
       trade_date: tradeData.trade_date ? new Date(tradeData.trade_date) : new Date(),
       notes: tradeData.notes,
+      margin_percent: tradeData.margin_percent?.toString(),
     })
     .returning();
 
   // Check if position should be closed
   const allTrades = [...existingTrades, newTrade];
   const netContracts = calculateNetContracts(allTrades);
-  const shouldCloseOption = netContracts === 0 && tradeData.trade_type === 'CLOSE';
+  const shouldCloseOption = netContracts === 0 && isClosingTrade(tradeData.trade_type);
 
   // Auto-update option status if fully closed
   if (shouldCloseOption) {
@@ -120,6 +121,7 @@ export async function updateTrade(
   if (updates.hsi !== undefined) updateData.hsi = updates.hsi.toString();
   if (updates.trade_date !== undefined) updateData.trade_date = new Date(updates.trade_date);
   if (updates.notes !== undefined) updateData.notes = updates.notes;
+  if (updates.margin_percent !== undefined) updateData.margin_percent = updates.margin_percent.toString();
 
   const [updated] = await db
     .update(trades)

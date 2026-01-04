@@ -14,7 +14,7 @@ export const tradeStatuses = ['Open', 'Closed', 'Expired', 'Exercised', 'Lapsed'
 export type TradeStatus = typeof tradeStatuses[number];
 
 // Trade type enum values
-export const tradeTypes = ['OPEN', 'ADD', 'REDUCE', 'CLOSE'] as const;
+export const tradeTypes = ['OPEN_SELL', 'CLOSE_BUY', 'OPEN_BUY', 'CLOSE_SELL'] as const;
 export type TradeType = typeof tradeTypes[number];
 
 // ============================================================================
@@ -75,6 +75,9 @@ export const trades = pgTable('trades', {
   stock_price: numeric('stock_price').notNull(),
   hsi: numeric('hsi').notNull(),
   
+  // Margin
+  margin_percent: numeric('margin_percent'), // Optional margin percentage (e.g., 20 for 20%)
+
   // Optional
   notes: text('notes'),
   
@@ -125,6 +128,7 @@ export interface CreateTradeInput {
   fee?: number;
   stock_price: number;
   hsi: number;
+  margin_percent?: number;
   trade_date?: string;
   notes?: string;
 }
@@ -144,6 +148,7 @@ export interface UpdateTradeInput {
   fee?: number;
   stock_price?: number;
   hsi?: number;
+  margin_percent?: number;
   trade_date?: string;
   notes?: string;
 }
@@ -182,6 +187,8 @@ export interface OptionPNL {
   grossPNL: number;
   netPNL: number;
   returnPercentage: number;
+  totalMargin?: number;
+  marketValue?: number;
 }
 
 export interface OptionWithSummary extends Option {

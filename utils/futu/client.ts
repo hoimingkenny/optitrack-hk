@@ -526,3 +526,14 @@ export async function getQuote(symbol: string) {
   const snapshots = await globalClient.getSecuritySnapshots([{ market, code }]);
   return snapshots.length > 0 ? snapshots[0] : null;
 }
+
+export async function getSnapshots(symbols: string[]) {
+  if (!symbols || symbols.length === 0) return [];
+  
+  const securities = symbols.map(s => ({
+    market: getMarketFromSymbol(s),
+    code: getCodeFromSymbol(s)
+  }));
+  
+  return globalClient.getSecuritySnapshots(securities);
+}

@@ -154,6 +154,7 @@ export default function FutuOptionsPage() {
           stock_price: data.stock_price,
           hsi: data.hsi,
           trade_date: data.trade_date,
+          margin_percent: data.margin_percent,
         },
       };
       

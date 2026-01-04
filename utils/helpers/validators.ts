@@ -74,6 +74,11 @@ export function validateTradeInput(input: Partial<NewTradeInput>): ValidationErr
     errors.push({ field: 'fee', message: 'Fee cannot be negative' });
   }
 
+  // Margin Percent (optional but must be non-negative)
+  if (input.margin_percent !== undefined && input.margin_percent < 0) {
+    errors.push({ field: 'margin_percent', message: 'Margin % cannot be negative' });
+  }
+
   // Stock price (required, must be non-negative)
   if (input.stock_price === undefined || input.stock_price === null) {
     errors.push({ field: 'stock_price', message: 'Stock price is required' });

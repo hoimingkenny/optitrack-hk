@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Box, Container, Center, Spinner, Text, VStack, Flex, Heading, Table, Checkbox } from '@chakra-ui/react';
+import { useState, useEffect, useMemo } from 'react';
+import { Box, Container, Center, Spinner, Text, VStack, Flex, Heading, Table, Checkbox, SimpleGrid } from '@chakra-ui/react';
 import { User } from '@supabase/supabase-js';
 import { OptionWithTrades, Trade } from '@/db/schema';
 import { supabase } from '@/utils/supabase';
 import DashboardNav from '@/components/layout/DashboardNav';
 import { DirectionBadge, StatusBadge, OptionTypeBadge } from '@/components/ui/Badge';
 import { formatHKD, formatPNL } from '@/utils/helpers/pnl-calculator';
+import { isOpeningTrade } from '@/utils/helpers/option-calculator';
 import { formatDateForDisplay, formatDateToYYYYMMDD, formatDateForInput } from '@/utils/helpers/date-helpers';
 import { toast } from '@/components/ui/Toast';
 import { useRouter } from 'next/navigation';
@@ -36,11 +37,84 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
   const [displayDirectionForEdit, setDisplayDirectionForEdit] = useState('');
   const [isDeletingTrades, setIsDeletingTrades] = useState(false);
   const [isDeletingOption, setIsDeletingOption] = useState(false);
+  
+  // Live price state
+  const [livePrice, setLivePrice] = useState<number | null>(null);
 
   // Resolve params
   useEffect(() => {
     params.then(setResolvedParams);
   }, [params]);
+
+  // Fetch live price
+  useEffect(() => {
+    if (!optionData || optionData.status !== 'Open') return;
+    
+    let symbol = optionData.futu_code;
+    
+    // If no futu_code, we can't fetch snapshot easily. 
+    // We rely on it being saved during creation.
+    if (!symbol) return;
+    
+    // Ensure market prefix if missing (e.g. "TCH..." -> "HK.TCH...")
+    if (!symbol.includes('.')) {
+         // Heuristic: check stock symbol
+         if (optionData.stock_symbol.includes('HK') || /^\d+$/.test(optionData.stock_symbol)) {
+             symbol = `HK.${symbol}`;
+         } else if (optionData.stock_symbol.includes('US')) {
+             symbol = `US.${symbol}`;
+         }
+    }
+
+    const fetchPrice = async () => {
+      try {
+        const response = await fetch('/api/futu/snapshot', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ symbols: [symbol] })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.snapshots && data.snapshots.length > 0) {
+            const snap = data.snapshots[0];
+            // Futu snapshot structure: basic.curPrice or basic.lastPrice
+            // We use cleanFutuObject in API so it should be number
+            const price = snap.basic?.curPrice || snap.basic?.lastPrice;
+            if (price) setLivePrice(price);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching live price:', err);
+      }
+    };
+
+    fetchPrice();
+    // Poll every 5 seconds for real-time updates
+    const interval = setInterval(fetchPrice, 5000);
+    return () => clearInterval(interval);
+  }, [optionData]);
+
+  // Calculate live PNL
+  const liveUnrealizedPNL = livePrice !== null && optionData ? (() => {
+    const netContracts = optionData.summary.netContracts;
+    if (netContracts === 0) return 0;
+    
+    const isSell = optionData.direction === 'Sell';
+    const shares = optionData.trades[0]?.shares_per_contract || 500;
+    const avgEntry = optionData.summary.avgEntryPremium;
+    
+    if (isSell) {
+      return (avgEntry - livePrice) * netContracts * shares;
+    } else {
+      return (livePrice - avgEntry) * netContracts * shares;
+    }
+  })() : null;
+
+  const displayUnrealizedPNL = liveUnrealizedPNL !== null ? liveUnrealizedPNL : (optionData?.summary.unrealizedPNL || 0);
+  const displayNetPNL = liveUnrealizedPNL !== null && optionData
+    ? (optionData.summary.realizedPNL || 0) + liveUnrealizedPNL - (optionData.summary.totalFees || 0)
+    : (optionData?.summary.netPNL || 0);
 
   // Check auth
   useEffect(() => {
@@ -117,16 +191,16 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
       const { data: { session } } = await supabase.auth.getSession();
       
       // Calculate trade type based on modal direction and option direction
-      // If modal direction matches option direction (e.g., both Sell), it's adding to the position
-      // If modal direction is opposite (e.g., option is Sell, modal is Buy), it's reducing/closing
-      let tradeType: any = 'ADD';
-      if (tradeData.direction !== optionData.direction) {
-        const currentNetContracts = optionData.summary.netContracts;
-        if (tradeData.contracts >= currentNetContracts) {
-          tradeType = 'CLOSE';
-        } else {
-          tradeType = 'REDUCE';
-        }
+      let tradeType: any;
+      
+      if (tradeData.direction === optionData.direction) {
+        // Same direction means increasing position (Opening/Adding)
+        tradeType = optionData.direction === 'Sell' ? 'OPEN_SELL' : 'OPEN_BUY';
+      } else {
+        // Opposite direction means decreasing position (Closing/Reducing)
+        // If Option is Sell (Short), we Buy to close -> CLOSE_BUY
+        // If Option is Buy (Long), we Sell to close -> CLOSE_SELL
+        tradeType = optionData.direction === 'Sell' ? 'CLOSE_BUY' : 'CLOSE_SELL';
       }
 
       const response = await fetch(`/api/options/${resolvedParams.id}/trades`, {
@@ -368,7 +442,8 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                 p={6}
               >
                 <Heading size="md" mb={4} color="fg.default">Position Summary</Heading>
-                <Flex gap={8} flexWrap="wrap">
+                <SimpleGrid columns={{ base: 1, md: 3 }} gap={6}>
+                  {/* Row 1: Position Details */}
                   <Box>
                     <Text fontSize="sm" color="fg.muted" mb={1}>Total Opened</Text>
                     <Text fontSize="2xl" fontWeight="bold" color="fg.default">
@@ -382,51 +457,92 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                     </Text>
                   </Box>
                   <Box>
-                    <Text fontSize="sm" color="fg.muted" mb={1}>Shares/Contract</Text>
-                    <Text fontSize="2xl" fontWeight="bold" color="fg.default">
-                      {optionData.trades[0]?.shares_per_contract || 500}
-                    </Text>
-                  </Box>
-                  <Box>
                     <Text fontSize="sm" color="fg.muted" mb={1}>Net Position</Text>
                     <Text fontSize="2xl" fontWeight="bold" color="fg.default">
                       {optionData.summary.netContracts}
                     </Text>
                   </Box>
+
+                  {/* Row 2: Price & Valuation */}
+                  {(optionData.status === 'Open' || (optionData.summary.marketValue !== undefined && optionData.summary.marketValue > 0)) && (
+                    <>
+                      {optionData.status === 'Open' ? (
+                        <Box>
+                          <Text fontSize="sm" color="fg.muted" mb={1}>Last Premium</Text>
+                          <Text fontSize="2xl" fontWeight="bold" color="blue.400">
+                            {livePrice !== null 
+                              ? formatHKD(livePrice) 
+                              : (optionData as any).currentPrice !== undefined 
+                                ? formatHKD((optionData as any).currentPrice) 
+                                : '-'}
+                          </Text>
+                        </Box>
+                      ) : (
+                        /* Placeholder to maintain grid alignment if status is not Open but marketValue > 0 */
+                        <Box display={{ base: 'none', md: 'block' }} />
+                      )}
+                      <Box>
+                        <Text fontSize="sm" color="fg.muted" mb={1}>Covering shares if exercised</Text>
+                        <Text fontSize="2xl" fontWeight="bold" color="fg.default">
+                          {(() => {
+                            const sharesPerContract = optionData.trades[0]?.shares_per_contract || 500;
+                            const totalShares = optionData.summary.netContracts * sharesPerContract;
+                            return totalShares.toLocaleString();
+                          })()}
+                        </Text>
+                      </Box>
+                      <Box>
+                        <Text fontSize="sm" color="fg.muted" mb={1}>
+                          {optionData.direction === 'Sell' ? 'Est. Cost to Close' : 'Est. Exit Value'}
+                        </Text>
+                        <Text fontSize="2xl" fontWeight="bold" color="fg.default">
+                          {(() => {
+                            if (livePrice !== null) {
+                              const sharesPerContract = optionData.trades[0]?.shares_per_contract || 500;
+                              const mv = optionData.summary.netContracts * livePrice * sharesPerContract;
+                              return formatHKD(mv);
+                            }
+                            return formatHKD(optionData.summary.marketValue || 0);
+                          })()}
+                        </Text>
+                      </Box>
+                    </>
+                  )}
+
+                  {/* Row 3: PNL */}
+                  <Box>
+                    <Text fontSize="sm" color="fg.muted" mb={1}>Realized PNL</Text>
+                    <Text 
+                      fontSize="2xl" 
+                      fontWeight="bold" 
+                      color={optionData.summary.realizedPNL > 0 ? 'green.400' : optionData.summary.realizedPNL < 0 ? 'red.400' : 'fg.default'}
+                    >
+                      {formatPNL(optionData.summary.realizedPNL)}
+                    </Text>
+                  </Box>
+                  
+                  <Box>
+                    <Text fontSize="sm" color="fg.muted" mb={1}>Unrealized PNL</Text>
+                    <Text 
+                      fontSize="2xl" 
+                      fontWeight="bold" 
+                      color={displayUnrealizedPNL > 0 ? 'green.400' : displayUnrealizedPNL < 0 ? 'red.400' : 'fg.default'}
+                    >
+                      {formatPNL(displayUnrealizedPNL)}
+                    </Text>
+                  </Box>
+
                   <Box>
                     <Text fontSize="sm" color="fg.muted" mb={1}>Net PNL</Text>
                     <Text 
                       fontSize="2xl" 
                       fontWeight="bold" 
-                      color={optionData.summary.netPNL > 0 ? 'green.400' : optionData.summary.netPNL < 0 ? 'red.400' : 'fg.default'}
+                      color={displayNetPNL > 0 ? 'green.400' : displayNetPNL < 0 ? 'red.400' : 'fg.default'}
                     >
-                      {formatPNL(optionData.summary.netPNL)}
+                      {formatPNL(displayNetPNL)}
                     </Text>
                   </Box>
-                  {!(optionData.direction === 'Sell' && optionData.option_type === 'Call') && (
-                    <Box>
-                      <Text fontSize="sm" color="fg.muted" mb={1}>Covering cash if exercised</Text>
-                      <Text fontSize="2xl" fontWeight="bold" color="fg.default">
-                        {(() => {
-                          const strikePrice = typeof optionData.strike_price === 'string' ? parseFloat(optionData.strike_price) : optionData.strike_price;
-                          const sharesPerContract = optionData.trades[0]?.shares_per_contract || 500;
-                          const amount = optionData.summary.netContracts * sharesPerContract * strikePrice;
-                          return formatHKD(amount);
-                        })()}
-                      </Text>
-                    </Box>
-                  )}
-                  <Box>
-                    <Text fontSize="sm" color="fg.muted" mb={1}>Covering shares if exercised</Text>
-                    <Text fontSize="2xl" fontWeight="bold" color="fg.default">
-                      {(() => {
-                        const sharesPerContract = optionData.trades[0]?.shares_per_contract || 500;
-                        const totalShares = optionData.summary.netContracts * sharesPerContract;
-                        return totalShares.toLocaleString();
-                      })()}
-                    </Text>
-                  </Box>
-                </Flex>
+                </SimpleGrid>
               </Box>
 
               {/* Trades History */}
@@ -454,8 +570,9 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                           <Table.ColumnHeader textAlign="center">Premium</Table.ColumnHeader>
                           <Table.ColumnHeader textAlign="center">Contract</Table.ColumnHeader>
                           <Table.ColumnHeader textAlign="center">Total Premium</Table.ColumnHeader>
+                          <Table.ColumnHeader textAlign="center">Margin</Table.ColumnHeader>
                           <Table.ColumnHeader textAlign="center">Fee</Table.ColumnHeader>
-                          <Table.ColumnHeader textAlign="center">PnL</Table.ColumnHeader>
+                          <Table.ColumnHeader textAlign="center">Cash Flow</Table.ColumnHeader>
                           <Table.ColumnHeader textAlign="center">Actions</Table.ColumnHeader>
                         </Table.Row>
                       </Table.Header>
@@ -464,17 +581,41 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                           // Determine Buy/Sell based on trade type and option direction
                           // For a Sell Put/Call option: OPEN/ADD are Sell, REDUCE/CLOSE are Buy
                           // For a Buy Put/Call option: OPEN/ADD are Buy, REDUCE/CLOSE are Sell
-                          const isInitialDirection = trade.trade_type === 'OPEN' || trade.trade_type === 'ADD';
-                          const displayDirection = optionData.direction === 'Sell' 
+                          const isInitialDirection = isOpeningTrade(trade.trade_type);
+                          
+                          // Logical direction for PnL and Edit Modal (Buy/Sell)
+                          const logicalDirection = optionData.direction === 'Sell' 
                             ? (isInitialDirection ? 'Sell' : 'Buy')
                             : (isInitialDirection ? 'Buy' : 'Sell');
 
+                          // Display Label for Table (OPEN_SELL, etc.)
+                          let displayLabel = '';
+                          // Use the actual trade type if it's one of the new types, otherwise derive it
+                          if (['OPEN_SELL', 'CLOSE_BUY', 'OPEN_BUY', 'CLOSE_SELL'].includes(trade.trade_type)) {
+                            displayLabel = trade.trade_type.replace('_', ' ');
+                          } else {
+                            // Fallback for legacy data
+                            if (optionData.direction === 'Sell') {
+                               displayLabel = isInitialDirection ? 'OPEN SELL' : 'CLOSE BUY';
+                            } else {
+                               displayLabel = isInitialDirection ? 'OPEN BUY' : 'CLOSE SELL';
+                            }
+                          }
+
                           const totalPremium = parseFloat(trade.premium) * trade.contracts * trade.shares_per_contract;
+                          
+                          // Calculate Margin Amount
+                          const marginPercent = parseFloat((trade as any).margin_percent || '0');
+                          const strikePrice = typeof optionData.strike_price === 'string' ? parseFloat(optionData.strike_price) : optionData.strike_price;
+                          const marginAmount = marginPercent > 0 
+                            ? (trade.contracts * trade.shares_per_contract * strikePrice * (marginPercent / 100))
+                            : 0;
+
                           // Sell trades are cash inflows (+), Buy trades are cash outflows (-)
-                          const isSellTrade = displayDirection === 'Sell';
+                          const isSellTrade = logicalDirection === 'Sell';
                           const tradeCashFlow = isSellTrade ? totalPremium : -totalPremium;
-                          const tradePnl = tradeCashFlow - parseFloat(trade.fee);
-                          const pnlColor = tradePnl > 0 ? 'green.400' : tradePnl < 0 ? 'red.400' : 'fg.muted';
+                          const netCashFlow = tradeCashFlow - parseFloat(trade.fee);
+                          const cashFlowColor = netCashFlow > 0 ? 'green.400' : netCashFlow < 0 ? 'red.400' : 'fg.muted';
 
                           const isFirstTrade = index === 0;
 
@@ -494,7 +635,7 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                                 {formatDateForDisplay(trade.trade_date)}
                               </Table.Cell>
                               <Table.Cell textAlign="center" fontWeight="bold">
-                                {displayDirection}
+                                {displayLabel}
                               </Table.Cell>
                               <Table.Cell textAlign="center">
                                 {formatHKD(trade.premium)}
@@ -506,16 +647,19 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                                 {formatHKD(totalPremium)}
                               </Table.Cell>
                               <Table.Cell textAlign="center">
+                                {marginAmount > 0 ? formatHKD(marginAmount) : '-'}
+                              </Table.Cell>
+                              <Table.Cell textAlign="center">
                                 {formatHKD(trade.fee)}
                               </Table.Cell>
-                              <Table.Cell textAlign="center" fontWeight="medium" color={pnlColor}>
-                                {formatPNL(tradePnl)}
+                              <Table.Cell textAlign="center" fontWeight="medium" color={cashFlowColor}>
+                                {formatPNL(netCashFlow)}
                               </Table.Cell>
                               <Table.Cell textAlign="center">
                                 <Button 
                                   size="sm" 
                                   variant="ghost" 
-                                  onClick={() => handleEditTradeClick(trade, displayDirection)}
+                                  onClick={() => handleEditTradeClick(trade, logicalDirection)}
                                 >
                                   Edit
                                 </Button>
@@ -559,6 +703,7 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
             onSubmit={handleAddTrade}
             optionName={`${optionData.stock_symbol} ${formatDateToYYYYMMDD(optionData.expiry_date)} ${(typeof optionData.strike_price === 'string' ? parseFloat(optionData.strike_price) : optionData.strike_price).toFixed(2)} ${optionData.option_type}`}
             sharesPerContract={optionData.trades[0]?.shares_per_contract || 500}
+            optionDirection={optionData.direction}
             minDate={optionData.trades.length > 0 ? formatDateForInput(optionData.trades[0].trade_date) : undefined}
             isLoading={submittingTrade}
           />
