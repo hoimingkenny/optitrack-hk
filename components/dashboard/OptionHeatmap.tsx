@@ -1,8 +1,8 @@
 'use client';
 
-import { Box, Flex, Text, Button, Popover, IconButton, Portal } from '@chakra-ui/react';
+import { Box, Flex, Text, Button, Popover, IconButton } from '@chakra-ui/react';
 import type { OptionWithSummary } from '@/db/schema';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 
 function InfoIcon({ className }: { className?: string }) {
   return (
@@ -17,6 +17,20 @@ interface OptionHeatmapProps {
 }
 
 export default function OptionHeatmap({ options }: OptionHeatmapProps) {
+  const [isLegendOpen, setIsLegendOpen] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleMouseEnter = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setIsLegendOpen(true);
+  };
+
+  const handleMouseLeave = () => {
+    timeoutRef.current = setTimeout(() => {
+      setIsLegendOpen(false);
+    }, 150);
+  };
+
   // Get available years from options data
   const availableYears = useMemo(() => {
     const years = new Set<number>();
@@ -158,24 +172,44 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
           <Text fontSize="lg" fontWeight="semibold" color="fg.default">
             Option Expiration Heatmap
           </Text>
-          <Popover.Root positioning={{ placement: 'right-start' }}>
+          <Popover.Root 
+            open={isLegendOpen} 
+            onOpenChange={(details) => setIsLegendOpen(details.open)}
+            positioning={{ placement: 'right-start' }}
+          >
             <Popover.Trigger asChild>
               <IconButton 
                 variant="ghost" 
                 size="xs" 
                 aria-label="Show color legend" 
                 color="fg.muted"
-                _hover={{ color: "fg.default", bg: "bg.muted" }}
+                bg="transparent"
+                _hover={{ bg: "transparent", color: "fg.muted" }}
+                _active={{ bg: "transparent" }}
+                _focus={{ bg: "transparent" }}
+                cursor="default"
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
               >
                 <InfoIcon className="w-4 h-4" />
               </IconButton>
             </Popover.Trigger>
             <Popover.Positioner zIndex="popover">
-              <Popover.Content width="240px" p={4} borderRadius="lg" bg="bg.surface" boxShadow="lg" border="1px solid" borderColor="border.default">
+              <Popover.Content 
+                width="240px" 
+                p={4} 
+                borderRadius="lg" 
+                bg="bg.surface" 
+                boxShadow="lg" 
+                border="1px solid" 
+                borderColor="border.default"
+                onMouseEnter={handleMouseEnter}
+                onMouseLeave={handleMouseLeave}
+              >
                 <Popover.Arrow />
                 <Popover.Body>
                   <Flex direction="column" gap={4}>
-                    <Text fontWeight="semibold" fontSize="sm">Color Legend</Text>
+                    <Text fontWeight="semibold" fontSize="sm" color="fg.default">Color Legend</Text>
                     
                     <Flex direction="column" gap={3}>
                       <Flex alignItems="center" gap={2} fontSize="xs">
@@ -187,19 +221,19 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
                           borderColor="fg.default" 
                           boxShadow="0 0 0 1px var(--chakra-colors-fg-default)"
                         />
-                        <Text>Today</Text>
+                        <Text color="fg.default">Today</Text>
                       </Flex>
 
                       <Flex alignItems="center" gap={2} fontSize="xs">
                         <Box w="10px" h="10px" bg="bg.muted" borderRadius="sm" />
-                        <Text>No Expiry</Text>
+                        <Text color="fg.default">No Expiry</Text>
                       </Flex>
                       
                       <Box borderTop="1px solid" borderColor="border.subtle" pt={2} />
 
                       <Flex direction="column" gap={2}>
                         <Flex direction="column" gap={1}>
-                          <Text fontSize="11px" fontWeight="medium">Sell Put</Text>
+                          <Text fontSize="11px" fontWeight="medium" color="fg.default">Sell Put</Text>
                           <Flex gap={1}>
                             {colorMaps.sellPut.map((color, i) => (
                               <Box key={i} w="12px" h="12px" bg={color} borderRadius="sm" title={`Level ${i+1}`} />
@@ -208,7 +242,7 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
                         </Flex>
 
                         <Flex direction="column" gap={1}>
-                          <Text fontSize="11px" fontWeight="medium">Sell Call</Text>
+                          <Text fontSize="11px" fontWeight="medium" color="fg.default">Sell Call</Text>
                           <Flex gap={1}>
                             {colorMaps.sellCall.map((color, i) => (
                               <Box key={i} w="12px" h="12px" bg={color} borderRadius="sm" title={`Level ${i+1}`} />
@@ -217,7 +251,7 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
                         </Flex>
 
                         <Flex direction="column" gap={1}>
-                          <Text fontSize="11px" fontWeight="medium">Buy Call</Text>
+                          <Text fontSize="11px" fontWeight="medium" color="fg.default">Buy Call</Text>
                           <Flex gap={1}>
                             {colorMaps.buyCall.map((color, i) => (
                               <Box key={i} w="12px" h="12px" bg={color} borderRadius="sm" title={`Level ${i+1}`} />
@@ -226,7 +260,7 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
                         </Flex>
 
                         <Flex direction="column" gap={1}>
-                          <Text fontSize="11px" fontWeight="medium">Buy Put</Text>
+                          <Text fontSize="11px" fontWeight="medium" color="fg.default">Buy Put</Text>
                           <Flex gap={1}>
                             {colorMaps.buyPut.map((color, i) => (
                               <Box key={i} w="12px" h="12px" bg={color} borderRadius="sm" title={`Level ${i+1}`} />

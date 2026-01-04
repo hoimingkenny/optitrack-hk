@@ -16,7 +16,6 @@ import TradeForm from '@/components/trades/TradeForm';
 import OptionHeatmap from '@/components/dashboard/OptionHeatmap';
 import SellPutExposure from '@/components/dashboard/SellPutExposure';
 import SellCallExposure from '@/components/dashboard/SellCallExposure';
-import ExposureTimeline from '@/components/dashboard/ExposureTimeline';
 import Select from '@/components/ui/Select';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
@@ -406,9 +405,6 @@ export default function Home() {
                   <SellCallExposure options={options} timeRange={exposureTimeRange} />
                 </SimpleGrid>
               </Box>
-
-              {/* Exposure Timeline */}
-              <ExposureTimeline options={options} />
             </Box>
           ) : (
             <Center py={12} bg="bg.surface" borderRadius="xl" borderWidth="1px" borderColor="border.default">
