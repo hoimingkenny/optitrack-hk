@@ -131,6 +131,71 @@ export async function getOptionsWithSummary(
 }
 
 /**
+ * Get all open options for a user with trades (for PNL calculation)
+ */
+export async function getOpenOptionsWithTrades(
+  userId: string
+): Promise<OptionWithTrades[]> {
+  const result = await db
+    .select({
+      option: options,
+      trades: sql<Trade[]>`json_agg(${trades}.* ORDER BY ${trades.trade_date} ASC, ${trades.created_at} ASC)`.as('trades'),
+    })
+    .from(options)
+    .leftJoin(trades, eq(trades.option_id, options.id))
+    .where(and(eq(options.user_id, userId), eq(options.status, 'Open')))
+    .groupBy(options.id);
+
+  return result.map((row) => {
+    const tradesData: Trade[] = Array.isArray(row.trades) 
+      ? row.trades.filter((t: Trade | null) => t !== null && t.id != null) 
+      : [];
+    const summary = calculateOptionPNL({ ...row.option } as any, tradesData);
+
+    return {
+      ...row.option,
+      trades: tradesData,
+      summary,
+    };
+  });
+}
+
+/**
+ * Get all options for a user with trades
+ */
+export async function getAllOptionsWithTrades(
+  userId: string
+): Promise<OptionWithTrades[]> {
+  const result = await db
+    .select({
+      option: options,
+      trades: sql<Trade[]>`json_agg(${trades}.* ORDER BY ${trades.trade_date} ASC, ${trades.created_at} ASC)`.as('trades'),
+    })
+    .from(options)
+    .leftJoin(trades, eq(trades.option_id, options.id))
+    .where(eq(options.user_id, userId))
+    .groupBy(options.id)
+    .orderBy(
+      sql`CASE WHEN ${options.status} = 'Open' THEN 0 ELSE 1 END`,
+      asc(options.expiry_date),
+      asc(options.stock_symbol)
+    );
+
+  return result.map((row) => {
+    const tradesData: Trade[] = Array.isArray(row.trades) 
+      ? row.trades.filter((t: Trade | null) => t !== null && t.id != null) 
+      : [];
+    const summary = calculateOptionPNL({ ...row.option } as any, tradesData);
+
+    return {
+      ...row.option,
+      trades: tradesData,
+      summary,
+    };
+  });
+}
+
+/**
  * Get a single option by ID with all trades and summary
  */
 export async function getOptionById(

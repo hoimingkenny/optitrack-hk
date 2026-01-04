@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getOptionsWithSummary, createOptionWithTrade } from '@/db/repositories/options';
+import { getAllOptionsWithTrades, createOptionWithTrade } from '@/db/repositories/options';
 import { CreateOptionWithTradeInput } from '@/db/schema';
+import { populateLivePrices } from '@/utils/services/price-service';
 
 // Create Supabase client for API routes
 function getSupabaseClient(request: NextRequest) {
@@ -31,7 +32,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const options = await getOptionsWithSummary(user.id);
+    const optionsWithTrades = await getAllOptionsWithTrades(user.id);
+    const updatedOptions = await populateLivePrices(optionsWithTrades);
+
+    const options = updatedOptions.map(o => ({
+      ...o,
+      total_contracts: o.summary.totalOpened,
+      net_contracts: o.summary.netContracts,
+      total_pnl: o.summary.netPNL,
+      unrealized_pnl: o.summary.unrealizedPNL,
+      trades_count: o.trades.length,
+      shares_per_contract: o.trades[0]?.shares_per_contract || 500,
+    }));
 
     return NextResponse.json({ options }, { status: 200 });
   } catch (error) {

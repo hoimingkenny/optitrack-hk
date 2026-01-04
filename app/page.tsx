@@ -33,7 +33,6 @@ export default function Home() {
   // Options state
   const [options, setOptions] = useState<OptionWithSummary[]>([]);
   const [optionsLoading, setOptionsLoading] = useState(false);
-  const [refreshingPNL, setRefreshingPNL] = useState(false);
   const [showNewTradeForm, setShowNewTradeForm] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [exposureTimeRange, setExposureTimeRange] = useState<string>('all');
@@ -98,9 +97,6 @@ export default function Home() {
       if (!response.ok) throw new Error('Failed to fetch options');
       const data = await response.json();
       setOptions(data.options);
-      
-      // Refresh PNL for open positions
-      refreshPNL(data.options);
     } catch (error) {
       console.error('Error loading options:', error);
       toast.error('Failed to load options');
@@ -108,44 +104,6 @@ export default function Home() {
       setOptionsLoading(false);
     }
   }, [user]);
-
-  const refreshPNL = async (currentOptions: OptionWithSummary[]) => {
-    const hasOpenOptions = currentOptions.some(o => o.status === 'Open' && o.futu_code);
-    if (!hasOpenOptions) return;
-
-    setRefreshingPNL(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const response = await fetch('/api/futu/pnl-refresh', {
-        headers: {
-          'Authorization': `Bearer ${session?.access_token}`,
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        const updates = data.updates as any[];
-        
-        if (updates.length > 0) {
-          setOptions(prev => prev.map(opt => {
-            const update = updates.find(u => u.optionId === opt.id);
-            if (update) {
-              return {
-                ...opt,
-                total_pnl: update.netPNL,
-                unrealized_pnl: update.unrealizedPNL, // We might need to add this to OptionWithSummary type
-              };
-            }
-            return opt;
-          }));
-        }
-      }
-    } catch (error) {
-      console.error('Error refreshing PNL:', error);
-    } finally {
-      setRefreshingPNL(false);
-    }
-  };
 
   useEffect(() => {
     if (user) {

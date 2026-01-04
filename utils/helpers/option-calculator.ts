@@ -274,19 +274,6 @@ export function calculateOptionPNL(
   // For Buy options: Paid (-) at open, Received (+) at close
   const isSell = isSellDirection(option.direction);
   
-  const totalPremiumCashFlow = trades.reduce((sum, trade) => {
-    const premium = parseNumeric(trade.premium);
-    const contracts = parseNumeric(trade.contracts);
-    const shares = parseNumeric(trade.shares_per_contract) || DEFAULT_SHARES_PER_CONTRACT;
-    const amount = premium * contracts * shares;
-    
-    if (isOpeningTrade(trade.trade_type)) {
-      return sum + (isSell ? amount : -amount);
-    } else {
-      return sum + (isSell ? -amount : amount);
-    }
-  }, 0);
-
   // Recalculate unrealized PNL using the chronological stats
   const shares = parseNumeric(trades[0]?.shares_per_contract) || DEFAULT_SHARES_PER_CONTRACT;
   let unrealizedPNL = 0;
@@ -298,17 +285,32 @@ export function calculateOptionPNL(
     }
   }
 
+  // Net PNL = Realized PNL + Unrealized PNL - Total Fees
+  // This ensures the formula: Realized + Unrealized - Fees is strictly followed
   const netPNL = realizedPNL + unrealizedPNL - totalFees;
+  
+  // Calculate Gross PNL (Realized + Unrealized) for reference
+  const grossPNL = realizedPNL + unrealizedPNL;
 
   // Calculate market value of current position (Cost to Close)
   // Market Value = Net Contracts * Current Price * Shares
   const marketValue = (netContracts > 0 && currentPremium !== undefined)
-    ? netContracts * currentPremium * (parseNumeric(trades[0]?.shares_per_contract) || DEFAULT_SHARES_PER_CONTRACT)
+    ? netContracts * currentPremium * shares
     : 0;
   
-  // Calculate return percentage based on total premium invested
-  const totalInvested = avgEntryPremium * totalOpened * (parseNumeric(trades[0]?.shares_per_contract) || DEFAULT_SHARES_PER_CONTRACT);
-  const returnPercentage = totalInvested > 0 ? (netPNL / totalInvested) * 100 : 0;
+  // Calculate return percentage based on total premium invested or margin used
+  let returnPercentage = 0;
+  
+  if (isSell) {
+    // For sellers, return is based on margin used (if available) or max risk (approx. strike * shares)
+    // Using totalMargin if available, otherwise fallback to notional value
+    const base = totalMargin > 0 ? totalMargin : (parseNumeric(option.strike_price) * totalOpened * shares);
+    returnPercentage = base > 0 ? (netPNL / base) * 100 : 0;
+  } else {
+    // For buyers, return is based on premium paid
+    const totalInvested = avgEntryPremium * totalOpened * shares;
+    returnPercentage = totalInvested > 0 ? (netPNL / totalInvested) * 100 : 0;
+  }
   
   return {
     totalOpened,
@@ -319,7 +321,7 @@ export function calculateOptionPNL(
     totalFees,
     realizedPNL, 
     unrealizedPNL,
-    grossPNL: totalPremiumCashFlow, // Keeping this as cash flow for reference if needed
+    grossPNL,
     netPNL,
     returnPercentage,
     totalMargin,

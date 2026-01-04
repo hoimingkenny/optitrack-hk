@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { getOptionsWithSummary } from '@/db/repositories/options';
+import { getOptionsWithSummary, getOpenOptionsWithTrades } from '@/db/repositories/options';
+import { OptionWithTrades } from '@/db/schema';
 import globalClient, { toNumber } from '@/utils/futu/client';
 import { calculateOptionPNL } from '@/utils/helpers/option-calculator';
 
@@ -30,17 +31,28 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 1. Get all open options for the user
-    const optionsWithSummary = await getOptionsWithSummary(user.id);
-    const openOptions = optionsWithSummary.filter(o => o.status === 'Open' && o.futu_code);
+    // 1. Get all open options for the user with trades
+    const openOptions = await getOpenOptionsWithTrades(user.id);
+    const validOptions = openOptions.filter(o => o.futu_code);
 
-    if (openOptions.length === 0) {
+    if (validOptions.length === 0) {
       return NextResponse.json({ updates: [] });
     }
 
     // 2. Prepare codes for Futu snapshot
-    const codes = openOptions.map(o => {
-      const [market, code] = (o.futu_code as string).split('.');
+    const codes = validOptions.map(o => {
+      let futuCode = o.futu_code as string;
+      
+      // Ensure market prefix if missing
+      if (!futuCode.includes('.')) {
+        if (o.stock_symbol.includes('HK') || /^\d+$/.test(o.stock_symbol)) {
+          futuCode = `HK.${futuCode}`;
+        } else if (o.stock_symbol.includes('US')) {
+          futuCode = `US.${futuCode}`;
+        }
+      }
+
+      const [market, code] = futuCode.split('.');
       return {
         market: market === 'HK' ? 1 : 2, // 1 for HK, 2 for US
         code: code
@@ -51,18 +63,28 @@ export async function GET(request: NextRequest) {
     const snapshots = await globalClient.getSecuritySnapshots(codes);
     
     // 4. Map snapshots back to options and recalculate PNL
-    const updates = openOptions.map(option => {
+    const updates = validOptions.map((option: OptionWithTrades) => {
+      // Reconstruct the code logic to match snapshot
+      let futuCode = option.futu_code as string;
+      if (!futuCode.includes('.')) {
+        if (option.stock_symbol.includes('HK') || /^\d+$/.test(option.stock_symbol)) {
+          futuCode = `HK.${futuCode}`;
+        } else if (option.stock_symbol.includes('US')) {
+          futuCode = `US.${futuCode}`;
+        }
+      }
+      const codeWithoutMarket = futuCode.split('.')[1];
+
       const snapshot = snapshots.find((s: any) => 
-        s.basic.security.code === (option.futu_code as string).split('.')[1]
+        s.basic.security.code === codeWithoutMarket
       );
 
       if (!snapshot) return null;
 
       const currentPrice = toNumber(snapshot.basic.curPrice || snapshot.basic.lastPrice);
       
-      // We need the full OptionWithTrades to use calculateOptionPNL
-      // But getOptionsWithSummary already has trades in it (as json_agg)
-      const pnlSummary = calculateOptionPNL(option as any, (option as any).trades, currentPrice);
+      // Calculate PNL using the trades we fetched
+      const pnlSummary = calculateOptionPNL(option as any, option.trades, currentPrice);
 
       return {
         optionId: option.id,
