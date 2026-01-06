@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { Box, Container, Center, Spinner, Text, VStack, Flex, Heading, Table, Checkbox, SimpleGrid } from '@chakra-ui/react';
+import { useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 import { OptionWithTrades, Trade } from '@/db/schema';
 import { supabase } from '@/utils/supabase';
 import DashboardNav from '@/components/layout/DashboardNav';
-import { DirectionBadge, StatusBadge, OptionTypeBadge } from '@/components/ui/Badge';
+import { DirectionBadge, StatusBadge } from '@/components/ui/Badge';
 import { formatHKD, formatPNL } from '@/utils/helpers/pnl-calculator';
 import { isOpeningTrade } from '@/utils/helpers/option-calculator';
 import { formatDateForDisplay, formatDateToYYYYMMDD, formatDateForInput } from '@/utils/helpers/date-helpers';
@@ -16,6 +15,9 @@ import Button from '@/components/ui/Button';
 import AddTradeModal from '@/components/options/AddTradeModal';
 import EditTradeModal from '@/components/options/EditTradeModal';
 import { useLanguage } from '@/components/providers/LanguageProvider';
+import { Loader2, ArrowLeft, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export default function OptionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -372,12 +374,12 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
 
   if (initialLoading || !resolvedParams) {
     return (
-      <Center minH="100vh">
-        <VStack>
-          <Spinner size="xl" color="brand.500" borderWidth="4px" />
-          <Text color="fg.muted">{t('common.loading')}</Text>
-        </VStack>
-      </Center>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-2">
+          <Loader2 className="w-10 h-10 animate-spin text-primary" />
+          <p className="text-muted-foreground">{t('common.loading')}</p>
+        </div>
+      </div>
     );
   }
 
@@ -386,118 +388,110 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
   }
 
   return (
-    <Box minH="100vh" w="100%">
+    <div className="min-h-screen w-full bg-background">
       <DashboardNav onSignOut={handleSignOut} userEmail={user.email} />
       
-      <Box w="100%">
-        <Container maxW="7xl" mx="auto" px={{ base: 4, sm: 6, lg: 8 }} py={6}>
+      <main className="w-full">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {loading ? (
-            <Center py={12}>
-              <VStack gap={2}>
-                <Spinner size="lg" color="brand.500" borderWidth="4px" />
-                <Text color="fg.muted">{t('detail.load_fail')}</Text>
-              </VStack>
-            </Center>
+            <div className="flex flex-col items-center justify-center py-12 gap-2">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <p className="text-muted-foreground">{t('detail.load_fail')}</p>
+            </div>
           ) : !optionData ? (
-            <Center py={12}>
-              <Text color="fg.muted">{t('detail.option_not_found')}</Text>
-            </Center>
+            <div className="flex items-center justify-center py-12">
+              <p className="text-muted-foreground">{t('detail.option_not_found')}</p>
+            </div>
           ) : (
-            <VStack gap={6} align="stretch">
-              {/* Header */}
-              <Box>
-                <Box mb={4}>
-                  <Button variant="ghost" onClick={handleBack}>
+            <div className="flex flex-col gap-6">
+              <div>
+                <div className="mb-4">
+                  <Button variant="ghost" onClick={handleBack} className="flex items-center gap-2">
+                    <ArrowLeft className="w-4 h-4" />
                     {t('detail.back_to_all')}
                   </Button>
-                </Box>
+                </div>
                 
-                <Flex alignItems="center" justifyContent="space-between" mb={2}>
-                  <Flex alignItems="center" gap={3}>
-                    <Heading size="xl" color="fg.default">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h1 className="text-xl sm:text-2xl font-bold text-foreground">
                       {(() => {
                         const strikePrice = typeof optionData.strike_price === 'string' ? parseFloat(optionData.strike_price) : optionData.strike_price;
                         const optionName = `${optionData.stock_symbol} ${formatDateToYYYYMMDD(optionData.expiry_date)} ${strikePrice.toFixed(2)} ${optionData.option_type}`;
                         return optionName;
                       })()}
-                    </Heading>
+                    </h1>
                     <DirectionBadge direction={optionData.direction} />
                     <StatusBadge status={optionData.status} />
-                  </Flex>
+                  </div>
                   <Button 
-                    variant="danger" 
+                    variant="destructive" 
                     size="sm" 
                     onClick={handleDeleteOption}
                     isLoading={isDeletingOption}
                   >
+                    <Trash2 className="w-4 h-4 mr-2" />
                     {t('detail.remove_option')}
                   </Button>
-                </Flex>
-              </Box>
+                </div>
+              </div>
 
               {/* Position Summary */}
-              <Box 
-                bg="bg.surface" 
-                borderRadius="xl" 
-                borderWidth="1px" 
-                borderColor="border.default"
-                p={6}
-              >
-                <Heading size="md" mb={4} color="fg.default">{t('detail.position_summary')}</Heading>
-                <SimpleGrid columns={{ base: 1, md: 3 }} gap={6}>
+              <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
+                <h2 className="text-lg font-bold mb-4 text-foreground">{t('detail.position_summary')}</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                   {/* Row 1: Position Details */}
-                  <Box>
-                    <Text fontSize="sm" color="fg.muted" mb={1}>{t('detail.total_opened')}</Text>
-                    <Text fontSize="2xl" fontWeight="bold" color="fg.default">
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">{t('detail.total_opened')}</p>
+                    <p className="text-2xl font-bold text-foreground">
                       {optionData.summary.totalOpened}
-                    </Text>
-                  </Box>
-                  <Box>
-                    <Text fontSize="sm" color="fg.muted" mb={1}>{t('detail.total_closed')}</Text>
-                    <Text fontSize="2xl" fontWeight="bold" color="fg.default">
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">{t('detail.total_closed')}</p>
+                    <p className="text-2xl font-bold text-foreground">
                       {optionData.summary.totalClosed}
-                    </Text>
-                  </Box>
-                  <Box>
-                    <Text fontSize="sm" color="fg.muted" mb={1}>{t('detail.net_position')}</Text>
-                    <Text fontSize="2xl" fontWeight="bold" color="fg.default">
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">{t('detail.net_position')}</p>
+                    <p className="text-2xl font-bold text-foreground">
                       {optionData.summary.netContracts}
-                    </Text>
-                  </Box>
+                    </p>
+                  </div>
 
                   {/* Row 2: Price & Valuation */}
                   {(optionData.status === 'Open' || (optionData.summary.marketValue !== undefined && optionData.summary.marketValue > 0)) && (
                     <>
                       {optionData.status === 'Open' ? (
-                        <Box>
-                          <Text fontSize="sm" color="fg.muted" mb={1}>{t('detail.last_premium')}</Text>
-                          <Text fontSize="2xl" fontWeight="bold" color="blue.400">
+                        <div>
+                          <p className="text-sm text-muted-foreground mb-1">{t('detail.last_premium')}</p>
+                          <p className="text-2xl font-bold text-blue-500">
                             {livePrice !== null 
                               ? formatHKD(livePrice) 
                               : (optionData as any).currentPrice !== undefined 
                                 ? formatHKD((optionData as any).currentPrice) 
                                 : '-'}
-                          </Text>
-                        </Box>
+                          </p>
+                        </div>
                       ) : (
-                        /* Placeholder to maintain grid alignment if status is not Open but marketValue > 0 */
-                        <Box display={{ base: 'none', md: 'block' }} />
+                        <div className="hidden md:block" />
                       )}
-                      <Box>
-                        <Text fontSize="sm" color="fg.muted" mb={1}>{t('detail.covering_shares_exercised')}</Text>
-                        <Text fontSize="2xl" fontWeight="bold" color="fg.default">
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">{t('detail.covering_shares_exercised')}</p>
+                        <p className="text-2xl font-bold text-foreground">
                           {(() => {
                             const sharesPerContract = optionData.trades[0]?.shares_per_contract || 500;
                             const totalShares = optionData.summary.netContracts * sharesPerContract;
                             return totalShares.toLocaleString();
                           })()}
-                        </Text>
-                      </Box>
-                      <Box>
-                        <Text fontSize="sm" color="fg.muted" mb={1}>
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">
                           {optionData.direction === 'Sell' ? t('detail.est_cost_close') : t('detail.est_exit_value')}
-                        </Text>
-                        <Text fontSize="2xl" fontWeight="bold" color="fg.default">
+                        </p>
+                        <p className="text-2xl font-bold text-foreground">
                           {(() => {
                             if (livePrice !== null) {
                               const sharesPerContract = optionData.trades[0]?.shares_per_contract || 500;
@@ -506,97 +500,88 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                             }
                             return formatHKD(optionData.summary.marketValue || 0);
                           })()}
-                        </Text>
-                      </Box>
+                        </p>
+                      </div>
                     </>
                   )}
 
                   {/* Row 3: PNL */}
-                  <Box>
-                    <Text fontSize="sm" color="fg.muted" mb={1}>{t('detail.realized_pnl')}</Text>
-                    <Text 
-                      fontSize="2xl" 
-                      fontWeight="bold" 
-                      color={optionData.summary.realizedPNL > 0 ? 'green.400' : optionData.summary.realizedPNL < 0 ? 'red.400' : 'fg.default'}
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">{t('detail.realized_pnl')}</p>
+                    <p 
+                      className={cn(
+                        "text-2xl font-bold",
+                        optionData.summary.realizedPNL > 0 ? "text-green-500" : optionData.summary.realizedPNL < 0 ? "text-red-500" : "text-foreground"
+                      )}
                     >
                       {formatPNL(optionData.summary.realizedPNL)}
-                    </Text>
-                  </Box>
+                    </p>
+                  </div>
                   
-                  <Box>
-                    <Text fontSize="sm" color="fg.muted" mb={1}>{t('detail.unrealized_pnl')}</Text>
-                    <Text 
-                      fontSize="2xl" 
-                      fontWeight="bold" 
-                      color={displayUnrealizedPNL > 0 ? 'green.400' : displayUnrealizedPNL < 0 ? 'red.400' : 'fg.default'}
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">{t('detail.unrealized_pnl')}</p>
+                    <p 
+                      className={cn(
+                        "text-2xl font-bold",
+                        displayUnrealizedPNL > 0 ? "text-green-500" : displayUnrealizedPNL < 0 ? "text-red-500" : "text-foreground"
+                      )}
                     >
                       {formatPNL(displayUnrealizedPNL)}
-                    </Text>
-                  </Box>
+                    </p>
+                  </div>
 
-                  <Box>
-                    <Text fontSize="sm" color="fg.muted" mb={1}>{t('detail.net_pnl')}</Text>
-                    <Text 
-                      fontSize="2xl" 
-                      fontWeight="bold" 
-                      color={displayNetPNL > 0 ? 'green.400' : displayNetPNL < 0 ? 'red.400' : 'fg.default'}
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">{t('detail.net_pnl')}</p>
+                    <p 
+                      className={cn(
+                        "text-2xl font-bold",
+                        displayNetPNL > 0 ? "text-green-500" : displayNetPNL < 0 ? "text-red-500" : "text-foreground"
+                      )}
                     >
                       {formatPNL(displayNetPNL)}
-                    </Text>
-                  </Box>
-                </SimpleGrid>
-              </Box>
+                    </p>
+                  </div>
+                </div>
+              </div>
 
               {/* Trades History */}
-              <Box 
-                bg="bg.surface" 
-                borderRadius="xl" 
-                borderWidth="1px" 
-                borderColor="border.default"
-                p={6}
-              >
-                <Heading size="md" mb={4} color="fg.default">
-                  {t('detail.trades_history')} ({optionData.trades.length})
-                </Heading>
+              <div className="bg-card rounded-xl border border-border p-6 shadow-sm overflow-hidden">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-bold text-foreground">
+                    {t('detail.trades_history')} ({optionData.trades.length})
+                  </h2>
+                </div>
                 
                 {optionData.trades.length === 0 ? (
-                  <Text color="fg.muted">{t('detail.no_trades')}</Text>
+                  <p className="text-muted-foreground">{t('detail.no_trades')}</p>
                 ) : (
-                  <Box overflowX="auto">
-                    <Table.Root size="sm" variant="outline">
-                      <Table.Header>
-                        <Table.Row height="2.75rem">
-                          <Table.ColumnHeader width="40px"></Table.ColumnHeader>
-                          <Table.ColumnHeader textAlign="center">{t('detail.date')}</Table.ColumnHeader>
-                          <Table.ColumnHeader textAlign="center">{t('detail.direction')}</Table.ColumnHeader>
-                          <Table.ColumnHeader textAlign="center">{t('detail.premium')}</Table.ColumnHeader>
-                          <Table.ColumnHeader textAlign="center">{t('detail.contract')}</Table.ColumnHeader>
-                          <Table.ColumnHeader textAlign="center">{t('detail.total_premium')}</Table.ColumnHeader>
-                          <Table.ColumnHeader textAlign="center">{t('detail.margin')}</Table.ColumnHeader>
-                          <Table.ColumnHeader textAlign="center">{t('detail.fee')}</Table.ColumnHeader>
-                          <Table.ColumnHeader textAlign="center">{t('detail.cash_flow')}</Table.ColumnHeader>
-                          <Table.ColumnHeader textAlign="center">{t('detail.actions')}</Table.ColumnHeader>
-                        </Table.Row>
-                      </Table.Header>
-                      <Table.Body>
+                  <div className="overflow-x-auto -mx-6">
+                    <table className="w-full text-sm text-left">
+                      <thead className="text-xs uppercase bg-muted/50 text-muted-foreground border-y border-border">
+                        <tr>
+                          <th className="px-6 py-3 w-10"></th>
+                          <th className="px-6 py-3">{t('detail.date')}</th>
+                          <th className="px-6 py-3">{t('detail.direction')}</th>
+                          <th className="px-6 py-3 text-right">{t('detail.premium')}</th>
+                          <th className="px-6 py-3 text-right">{t('detail.contract')}</th>
+                          <th className="px-6 py-3 text-right">{t('detail.total_premium')}</th>
+                          <th className="px-6 py-3 text-right">{t('detail.margin')}</th>
+                          <th className="px-6 py-3 text-right">{t('detail.fee')}</th>
+                          <th className="px-6 py-3 text-right">{t('detail.cash_flow')}</th>
+                          <th className="px-6 py-3 text-center">{t('detail.actions')}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
                         {optionData.trades.map((trade, index) => {
-                          // Determine Buy/Sell based on trade type and option direction
-                          // For a Sell Put/Call option: OPEN/ADD are Sell, REDUCE/CLOSE are Buy
-                          // For a Buy Put/Call option: OPEN/ADD are Buy, REDUCE/CLOSE are Sell
                           const isInitialDirection = isOpeningTrade(trade.trade_type);
-                          
-                          // Logical direction for PnL and Edit Modal (Buy/Sell)
                           const logicalDirection = optionData.direction === 'Sell' 
                             ? (isInitialDirection ? 'Sell' : 'Buy')
                             : (isInitialDirection ? 'Buy' : 'Sell');
 
-                          // Display Label for Table (OPEN_SELL, etc.)
                           let displayLabel = '';
-                          // Use the actual trade type if it's one of the new types, otherwise derive it
                           if (['OPEN_SELL', 'CLOSE_BUY', 'OPEN_BUY', 'CLOSE_SELL'].includes(trade.trade_type)) {
                             displayLabel = trade.trade_type.replace('_', ' ');
                           } else {
-                            // Fallback for legacy data
                             if (optionData.direction === 'Sell') {
                                displayLabel = isInitialDirection ? 'OPEN SELL' : 'CLOSE BUY';
                             } else {
@@ -605,97 +590,95 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                           }
 
                           const totalPremium = parseFloat(trade.premium) * trade.contracts * trade.shares_per_contract;
-                          
-                          // Calculate Margin Amount
                           const marginPercent = parseFloat((trade as any).margin_percent || '0');
                           const strikePrice = typeof optionData.strike_price === 'string' ? parseFloat(optionData.strike_price) : optionData.strike_price;
                           const marginAmount = marginPercent > 0 
                             ? (trade.contracts * trade.shares_per_contract * strikePrice * (marginPercent / 100))
                             : 0;
 
-                          // Sell trades are cash inflows (+), Buy trades are cash outflows (-)
                           const isSellTrade = logicalDirection === 'Sell';
                           const tradeCashFlow = isSellTrade ? totalPremium : -totalPremium;
                           const netCashFlow = tradeCashFlow - parseFloat(trade.fee);
-                          const cashFlowColor = netCashFlow > 0 ? 'green.400' : netCashFlow < 0 ? 'red.400' : 'fg.muted';
-
                           const isFirstTrade = index === 0;
 
                           return (
-                            <Table.Row key={trade.id} height="2.75rem">
-                              <Table.Cell>
+                            <tr key={trade.id} className="hover:bg-muted/30 transition-colors">
+                              <td className="px-6 py-4">
                                 {!isFirstTrade && (
-                                  <input 
-                                    type="checkbox"
-                                    checked={selectedTradeIds.has(trade.id)} 
-                                    onChange={() => handleToggleTrade(trade.id)}
-                                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                  <Checkbox 
+                                    checked={selectedTradeIds.has(trade.id)}
+                                    onCheckedChange={() => handleToggleTrade(trade.id)}
                                   />
                                 )}
-                              </Table.Cell>
-                              <Table.Cell textAlign="center" color="fg.muted">
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-muted-foreground">
                                 {formatDateForDisplay(trade.trade_date)}
-                              </Table.Cell>
-                              <Table.Cell textAlign="center" fontWeight="bold">
-                                {displayLabel}
-                              </Table.Cell>
-                              <Table.Cell textAlign="center">
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="flex flex-col">
+                                  <span className="font-bold">{displayLabel}</span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-right">
                                 {formatHKD(trade.premium)}
-                              </Table.Cell>
-                              <Table.Cell textAlign="center">
+                              </td>
+                              <td className="px-6 py-4 text-right">
                                 {trade.contracts}
-                              </Table.Cell>
-                              <Table.Cell textAlign="center">
+                              </td>
+                              <td className="px-6 py-4 text-right font-medium">
                                 {formatHKD(totalPremium)}
-                              </Table.Cell>
-                              <Table.Cell textAlign="center">
+                              </td>
+                              <td className="px-6 py-4 text-right text-muted-foreground">
                                 {marginAmount > 0 ? formatHKD(marginAmount) : '-'}
-                              </Table.Cell>
-                              <Table.Cell textAlign="center">
+                              </td>
+                              <td className="px-6 py-4 text-right text-muted-foreground">
                                 {formatHKD(trade.fee)}
-                              </Table.Cell>
-                              <Table.Cell textAlign="center" fontWeight="medium" color={cashFlowColor}>
+                              </td>
+                              <td className={cn(
+                                "px-6 py-4 text-right font-medium",
+                                netCashFlow > 0 ? "text-green-500" : netCashFlow < 0 ? "text-red-500" : "text-muted-foreground"
+                              )}>
                                 {formatPNL(netCashFlow)}
-                              </Table.Cell>
-                              <Table.Cell textAlign="center">
+                              </td>
+                              <td className="px-6 py-4 text-center">
                                 <Button 
-                                  size="sm" 
                                   variant="ghost" 
+                                  size="sm" 
                                   onClick={() => handleEditTradeClick(trade, logicalDirection)}
                                 >
                                   {t('detail.edit')}
                                 </Button>
-                              </Table.Cell>
-                            </Table.Row>
+                              </td>
+                            </tr>
                           );
                         })}
-                      </Table.Body>
-                    </Table.Root>
-                  </Box>
+                      </tbody>
+                    </table>
+                  </div>
                 )}
-              </Box>
+              </div>
 
               {/* Action Buttons */}
               {(optionData.status === 'Open' || (optionData.status === 'Expired' && optionData.summary.netContracts > 0)) && (
-                <Flex gap={3}>
+                <div className="flex gap-3">
                   <Button onClick={() => setIsAddTradeModalOpen(true)}>
                     {t('detail.add_trade')}
                   </Button>
                   {selectedTradeIds.size > 0 && (
                     <Button 
-                      variant="danger" 
+                      variant="destructive" 
                       onClick={handleDeleteSelectedTrades}
                       isLoading={isDeletingTrades}
                     >
                       {t('detail.delete_selected')} ({selectedTradeIds.size})
                     </Button>
                   )}
-                </Flex>
+                </div>
               )}
-            </VStack>
+            </div>
           )}
-        </Container>
-      </Box>
+        </div>
+      </main>
 
       {optionData && (
         <>
@@ -726,6 +709,6 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
           />
         </>
       )}
-    </Box>
+    </div>
   );
 }

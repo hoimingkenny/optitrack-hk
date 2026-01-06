@@ -1,19 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { 
-  Box, 
-  VStack, 
-  Text, 
-  Spinner, 
-  Portal,
-  Field,
-  Flex,
-  Badge,
-  HStack
-} from '@chakra-ui/react';
 import { OptionChainItem } from '@/utils/futu/client';
 import { useLanguage } from '@/components/providers/LanguageProvider';
+import { Badge } from '@/components/ui/Badge';
+import { Loader2, ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface OptionSelectProps {
   label?: string;
@@ -43,7 +35,6 @@ export default function OptionSelect({
   const [results, setResults] = useState<OptionChainItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
   
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -98,99 +89,80 @@ export default function OptionSelect({
   const selectedItem = results.find(r => r.code === value);
 
   return (
-    <Field.Root invalid={!!error} required={required} w="full">
+    <div className="w-full space-y-1.5">
       {label && (
-        <Field.Label fontSize="sm" fontWeight="medium" color="fg.muted" mb={1.5}>
+        <label className="text-sm font-medium text-muted-foreground block">
           {label}
-          {required && <Box as="span" color="red.400" ml={1}>*</Box>}
-        </Field.Label>
+          {required && <span className="text-destructive ml-1">*</span>}
+        </label>
       )}
       
-      <Box position="relative" ref={containerRef} w="full">
-        <Box
-          p={2}
-          borderWidth="1px"
-          borderColor={error ? 'red.400' : 'border.default'}
-          borderRadius="md"
-          bg={disabled ? 'bg.muted' : 'bg.surface'}
-          cursor={disabled ? 'not-allowed' : 'pointer'}
+      <div className="relative" ref={containerRef}>
+        <div
+          className={cn(
+            "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+            error && "border-destructive",
+            !disabled && "cursor-pointer"
+          )}
           onClick={() => !disabled && setIsOpen(!isOpen)}
-          minH="40px"
-          display="flex"
-          alignItems="center"
         >
           {selectedItem ? (
-            <HStack justify="space-between" w="full">
-              <Text fontWeight="bold">{selectedItem.strikePrice}</Text>
-              <Text fontSize="xs" color="fg.muted">{selectedItem.code}</Text>
-            </HStack>
+            <div className="flex items-center justify-between w-full">
+              <span className="font-bold">{selectedItem.strikePrice}</span>
+              <span className="text-xs text-muted-foreground">{selectedItem.code}</span>
+            </div>
           ) : (
-            <Text color="fg.subtle">{t('trade.select_strike')}</Text>
+            <span className="text-muted-foreground">{t('trade.select_strike')}</span>
           )}
-        </Box>
+          <ChevronDown className={cn("h-4 w-4 opacity-50 transition-transform", isOpen && "rotate-180")} />
+        </div>
 
         {isOpen && !disabled && (
-          <Portal>
-            <Box
-              position="absolute"
-              zIndex="popover"
-              bg="bg.surface"
-              boxShadow="lg"
-              borderRadius="md"
-              borderWidth="1px"
-              borderColor="border.default"
-              maxH="300px"
-              overflowY="auto"
-              minW={containerRef.current?.offsetWidth}
-              style={{
-                top: (containerRef.current?.getBoundingClientRect().bottom || 0) + window.scrollY + 5,
-                left: (containerRef.current?.getBoundingClientRect().left || 0) + window.scrollX,
-              }}
-            >
-              {isLoading ? (
-                <Flex p={4} justify="center">
-                  <Spinner size="sm" />
-                </Flex>
-              ) : results.length > 0 ? (
-                results.map((item) => (
-                  <Box
+          <div
+            className="absolute left-0 right-0 z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border border-border bg-popover text-popover-foreground shadow-md outline-none"
+          >
+            {isLoading ? (
+              <div className="flex items-center justify-center p-4">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              </div>
+            ) : results.length > 0 ? (
+              <div className="py-1">
+                {results.map((item) => (
+                  <div
                     key={item.code}
-                    px={3}
-                    py={2}
-                    cursor="pointer"
-                    _hover={{ bg: 'blue.50' }}
+                    className="flex items-center justify-between px-3 py-2 cursor-pointer hover:bg-accent hover:text-accent-foreground border-b border-border/50 last:border-0"
                     onClick={() => handleSelect(item)}
-                    borderBottomWidth="1px"
-                    borderColor="border.muted"
                   >
-                    <Flex justify="space-between" align="center">
-                      <VStack align="start" gap={0}>
-                        <Text fontWeight="bold">{t('trade.strike_label').replace('{price}', item.strikePrice.toString())}</Text>
-                        <Text fontSize="xs" color="fg.muted">{t('trade.last_price').replace('{price}', (item.premium || '-').toString())}</Text>
-                      </VStack>
-                      <Badge size="xs" colorPalette={item.optionType === 1 ? 'green' : 'red'}>
-                        {item.optionType === 1 ? 'CALL' : 'PUT'}
-                      </Badge>
-                    </Flex>
-                  </Box>
-                ))
-              ) : (
-                <Box p={4} textAlign="center">
-                  <Text fontSize="sm" color="fg.muted">
-                    {symbol && expiryDate ? t('trade.no_options_found') : t('trade.select_stock_expiry')}
-                  </Text>
-                </Box>
-              )}
-            </Box>
-          </Portal>
+                    <div className="flex flex-col">
+                      <span className="font-bold text-sm">
+                        {t('trade.strike_label').replace('{price}', item.strikePrice.toString())}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {t('trade.last_price').replace('{price}', (item.premium || '-').toString())}
+                      </span>
+                    </div>
+                    <Badge variant={item.optionType === 1 ? 'cyan' : 'purple'} className="text-[10px] h-5">
+                      {item.optionType === 1 ? 'CALL' : 'PUT'}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 text-center">
+                <p className="text-sm text-muted-foreground">
+                  {symbol && expiryDate ? t('trade.no_options_found') : t('trade.select_stock_expiry')}
+                </p>
+              </div>
+            )}
+          </div>
         )}
-      </Box>
+      </div>
       
       {error && (
-        <Field.ErrorText mt={1.5} fontSize="sm" color="red.400">
+        <p className="text-sm font-medium text-destructive">
           {error}
-        </Field.ErrorText>
+        </p>
       )}
-    </Field.Root>
+    </div>
   );
 }

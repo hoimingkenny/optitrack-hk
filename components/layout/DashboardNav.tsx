@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Box, Flex, HStack, Text } from '@chakra-ui/react';
+import { Home, List, BarChart3 } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import { useLanguage } from '@/components/providers/LanguageProvider';
+import { cn } from '@/lib/utils';
 
 interface DashboardNavProps {
   onSignOut: () => void;
@@ -16,62 +17,45 @@ export default function DashboardNav({ onSignOut, userEmail }: DashboardNavProps
   const { language, setLanguage, t } = useLanguage();
 
   const navItems = [
-    { href: '/', label: t('nav.dashboard'), icon: HomeIcon },
-    { href: '/trades', label: t('nav.all_trades'), icon: ListIcon },
-    { href: '/futu/options', label: t('nav.options'), icon: ChartBarIcon },
+    { href: '/', label: t('nav.dashboard'), icon: Home },
+    { href: '/trades', label: t('nav.all_trades'), icon: List },
+    { href: '/futu/options', label: t('nav.options'), icon: BarChart3 },
   ];
 
   return (
-    <Box
-      as="nav"
-      bg="bg.surface"
-      borderBottomWidth="1px"
-      borderColor="border.default"
-      position="sticky"
-      top={0}
-      zIndex={40}
-    >
-      <Box maxW="7xl" mx="auto" px={{ base: 4, sm: 6, lg: 8 }}>
-        <Flex alignItems="center" justifyContent="space-between" h={16}>
+    <nav className="sticky top-0 z-40 bg-background border-b border-border">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/">
-            <HStack gap={2}>
-              <Text fontSize="xl" fontWeight="bold" color="brand.500">📈</Text>
-              <Text fontSize="lg" fontWeight="semibold" color="fg.default">OptiTrack HK</Text>
-            </HStack>
+          <Link href="/" className="flex items-center gap-2">
+            <span className="text-xl font-bold">📈</span>
+            <span className="text-lg font-semibold text-foreground">OptiTrack HK</span>
           </Link>
 
           {/* Nav Links */}
-          <HStack gap={1} display={{ base: 'none', md: 'flex' }}>
+          <div className="hidden md:flex items-center gap-1">
             {navItems.map((item) => {
               const isActive = pathname === item.href;
               return (
-                <Link key={item.href} href={item.href}>
-                  <HStack
-                    gap={2}
-                    px={4}
-                    py={2}
-                    borderRadius="lg"
-                    fontSize="sm"
-                    fontWeight="medium"
-                    transition="colors"
-                    bg={isActive ? 'brand.500/20' : 'transparent'}
-                    color={isActive ? 'brand.500' : 'fg.muted'}
-                    _hover={{
-                      color: isActive ? 'brand.500' : 'fg.default',
-                      bg: isActive ? 'brand.500/20' : 'bg.muted',
-                    }}
-                  >
-                    <item.icon className="w-4 h-4" />
-                    <Text>{item.label}</Text>
-                  </HStack>
+                <Link 
+                  key={item.href} 
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors",
+                    isActive 
+                      ? "bg-primary/10 text-primary" 
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  <item.icon className="w-4 h-4" />
+                  <span>{item.label}</span>
                 </Link>
               );
             })}
-          </HStack>
+          </div>
 
           {/* User Menu */}
-          <HStack gap={4}>
+          <div className="flex items-center gap-4">
             <Button 
               variant="ghost" 
               size="sm" 
@@ -80,84 +64,38 @@ export default function DashboardNav({ onSignOut, userEmail }: DashboardNavProps
               {language === 'en' ? '中文' : 'EN'}
             </Button>
             {userEmail && (
-              <Text
-                display={{ base: 'none', sm: 'block' }}
-                fontSize="sm"
-                color="fg.muted"
-                truncate
-                maxW="150px"
-              >
+              <span className="hidden sm:block text-sm text-muted-foreground truncate max-w-[150px]">
                 {userEmail}
-              </Text>
+              </span>
             )}
             <Button variant="ghost" size="sm" onClick={onSignOut}>
               {t('nav.sign_out')}
             </Button>
-          </HStack>
-        </Flex>
-      </Box>
+          </div>
+        </div>
+      </div>
 
       {/* Mobile Nav */}
-      <Flex
-        display={{ base: 'flex', md: 'none' }}
-        borderTopWidth="1px"
-        borderColor="border.default"
-        px={2}
-        py={2}
-        gap={1}
-        overflowX="auto"
-      >
+      <div className="flex md:hidden border-t border-border px-2 py-2 gap-1 overflow-x-auto">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
-            <Link key={item.href} href={item.href}>
-              <HStack
-                gap={2}
-                px={3}
-                py={2}
-                borderRadius="lg"
-                fontSize="sm"
-                fontWeight="medium"
-                whiteSpace="nowrap"
-                bg={isActive ? 'brand.500/20' : 'transparent'}
-                color={isActive ? 'brand.500' : 'fg.muted'}
-                _hover={{
-                  color: isActive ? 'brand.500' : 'fg.default',
-                  bg: isActive ? 'brand.500/20' : 'bg.muted',
-                }}
-              >
-                <item.icon className="w-4 h-4" />
-                <Text>{item.label}</Text>
-              </HStack>
+            <Link 
+              key={item.href} 
+              href={item.href}
+              className={cn(
+                "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors",
+                isActive 
+                  ? "bg-primary/10 text-primary" 
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              )}
+            >
+              <item.icon className="w-4 h-4" />
+              <span>{item.label}</span>
             </Link>
           );
         })}
-      </Flex>
-    </Box>
-  );
-}
-
-// Icons
-function HomeIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-    </svg>
-  );
-}
-
-function ListIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-    </svg>
-  );
-}
-
-function ChartBarIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-    </svg>
+      </div>
+    </nav>
   );
 }

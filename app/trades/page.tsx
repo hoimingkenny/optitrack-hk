@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Box, Container, Flex, Text, VStack, Center, Spinner } from '@chakra-ui/react';
 import { User } from '@supabase/supabase-js';
 import { OptionWithSummary, OptionFilters } from '@/db/schema';
 import { supabase } from '@/utils/supabase';
@@ -11,6 +10,7 @@ import TradeFiltersComponent from '@/components/trades/TradeFilters';
 import { toast } from '@/components/ui/Toast';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/components/providers/LanguageProvider';
+import { Loader2 } from "lucide-react";
 
 export default function AllTradesPage() {
   const router = useRouter();
@@ -112,12 +112,12 @@ export default function AllTradesPage() {
   // Loading state
   if (initialLoading) {
     return (
-      <Center minH="100vh">
-        <VStack>
-          <Spinner size="xl" color="brand.500" borderWidth="4px" />
-          <Text color="fg.muted">{t('common.loading')}</Text>
-        </VStack>
-      </Center>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-2">
+          <Loader2 className="w-10 h-10 animate-spin text-primary" />
+          <p className="text-muted-foreground">{t('common.loading')}</p>
+        </div>
+      </div>
     );
   }
 
@@ -126,55 +126,51 @@ export default function AllTradesPage() {
   }
 
   return (
-    <Box minH="100vh" w="100%">
+    <div className="min-h-screen w-full bg-background">
       <DashboardNav onSignOut={handleSignOut} userEmail={user.email} />
       
-      <Box w="100%">
-        <Container maxW="7xl" mx="auto" px={{ base: 4, sm: 6, lg: 8 }} py={6}>
+      <main className="w-full">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {/* Header */}
-          <Flex alignItems="center" justifyContent="space-between" mb={6}>
-            <Box>
-              <Text fontSize="2xl" fontWeight="bold" color="fg.default">{t('trades.all_options_title')}</Text>
-              <Text color="fg.muted" fontSize="sm">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">{t('trades.all_options_title')}</h1>
+              <p className="text-sm text-muted-foreground">
                 {t('trades.total_options').replace('{count}', options.length.toString())}
-              </Text>
-            </Box>
-          </Flex>
+              </p>
+            </div>
+          </div>
 
           {/* Filters */}
           {options.length > 0 && (
-            <Box mb={6}>
+            <div className="mb-6">
               <TradeFiltersComponent
                 filters={filters}
                 onFilterChange={setFilters}
                 stockSymbols={stockSymbols}
               />
-            </Box>
+            </div>
           )}
 
           {/* Options List */}
           {optionsLoading ? (
-            <Center py={12}>
-              <VStack gap={2}>
-                <Spinner size="lg" color="brand.500" borderWidth="4px" />
-                <Text color="fg.muted">{t('page.loading_options')}</Text>
-              </VStack>
-            </Center>
+            <div className="flex flex-col items-center justify-center py-12 gap-2">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <p className="text-muted-foreground">{t('page.loading_options')}</p>
+            </div>
           ) : filteredOptions.length === 0 ? (
-            <Center py={12} bg="bg.surface" borderRadius="xl" borderWidth="1px" borderColor="border.default">
-              <VStack gap={4}>
-                <Text color="fg.muted" mb={0}>
-                  {options.length === 0 
-                    ? t('trades.no_options_dashboard')
-                    : t('trades.no_matching_filters')}
-                </Text>
-              </VStack>
-            </Center>
+            <div className="flex flex-col items-center justify-center py-12 bg-card rounded-xl border border-border border-dashed gap-4">
+              <p className="text-muted-foreground">
+                {options.length === 0 
+                  ? t('trades.no_options_dashboard')
+                  : t('trades.no_matching_filters')}
+              </p>
+            </div>
           ) : (
             <OptionsTable options={filteredOptions} />
           )}
-        </Container>
-      </Box>
-    </Box>
+        </div>
+      </main>
+    </div>
   );
 }

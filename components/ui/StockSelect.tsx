@@ -1,19 +1,10 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { 
-  Box, 
-  VStack, 
-  Text, 
-  Spinner, 
-  Portal,
-  Flex,
-  Badge,
-  Field,
-  Input as ChakraInput
-} from '@chakra-ui/react';
 import { Stock } from '@/db/schema';
 import { useLanguage } from '@/components/providers/LanguageProvider';
+import { Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // Simple hook to detect clicks outside
 function useOutsideClick({ ref, handler }: { ref: React.RefObject<HTMLElement | null>, handler: () => void }) {
@@ -118,109 +109,92 @@ export default function StockSelect({ label, error, value, onSelect, required }:
   const inputId = label?.toLowerCase().replace(/\s/g, '-');
 
   return (
-    <Field.Root invalid={!!error} required={required} ref={containerRef} position="relative" w="full">
+    <div className="w-full relative" ref={containerRef}>
       {label && (
-        <Field.Label htmlFor={inputId} fontSize="sm" fontWeight="medium" color="fg.muted" mb={1.5}>
+        <label
+          htmlFor={inputId}
+          className="block text-sm font-medium text-muted-foreground mb-1.5"
+        >
           {label}
-          {required && <Box as="span" color="red.400" ml={1}>*</Box>}
-        </Field.Label>
+          {required && <span className="ml-1 text-destructive">*</span>}
+        </label>
       )}
       
-      <Box position="relative" width="100%">
-        <ChakraInput
+      <div className="relative w-full">
+        <input
           ref={inputRef}
           id={inputId}
           placeholder={t('trade.search_placeholder')}
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
           onFocus={() => {
             setIsFocused(true);
             if (search.length > 0) setIsOpen(true);
           }}
           onBlur={() => setIsFocused(false)}
-          bg="bg.surface"
-          borderColor={error ? 'red.500' : 'border.default'}
-          borderRadius="lg"
-          _focus={{
-            borderColor: error ? 'red.500' : 'brand.500',
-            boxShadow: 'none',
-            outline: 'none',
-          }}
+          className={cn(
+            "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+            error && "border-destructive focus-visible:ring-destructive"
+          )}
         />
         
         {isLoading && (
-          <Box position="absolute" right={3} top="50%" transform="translateY(-50%)" zIndex={1}>
-            <Spinner size="xs" color="brand.500" />
-          </Box>
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 z-10">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+          </div>
         )}
-      </Box>
+      </div>
 
       {isOpen && search.length > 0 && (
-        <Box
-          position="absolute"
-          top="100%"
-          left={0}
-          right={0}
-          mt={1}
-          bg="bg.surface"
-          borderWidth="1px"
-          borderColor="border.default"
-          borderRadius="lg"
-          boxShadow="lg"
-          zIndex={1000}
-          maxH="250px"
-          overflowY="auto"
-        >
-          <VStack align="stretch" p={1} gap={0}>
+        <div className="absolute top-full left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-md z-50 max-h-[250px] overflow-y-auto">
+          <div className="flex flex-col p-1 gap-0">
             {results.map((stock) => (
-              <Box
+              <div
                 key={stock.id}
-                px={3}
-                py={2}
-                cursor="pointer"
-                borderRadius="md"
-                _hover={{ bg: 'bg.muted' }}
-                onMouseDown={(e) => {
+                className="px-3 py-2 cursor-pointer rounded-sm hover:bg-accent hover:text-accent-foreground"
+                onMouseDown={(e: React.MouseEvent) => {
                   e.preventDefault();
                   handleSelect(stock);
                 }}
               >
-                <Flex justify="space-between" align="center">
-                  <VStack align="start" gap={0}>
-                    <Text fontWeight="bold" fontSize="sm">{stock.symbol}</Text>
-                    <Text fontSize="xs" color="fg.subtle">{stock.short_name}</Text>
-                  </VStack>
-                  <Badge size="xs">{stock.market}</Badge>
-                </Flex>
-              </Box>
+                <div className="flex justify-between items-center">
+                  <div className="flex flex-col">
+                    <span className="font-bold text-sm">{stock.symbol}</span>
+                    <span className="text-xs text-muted-foreground">{stock.short_name}</span>
+                  </div>
+                  <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80">
+                    {stock.market}
+                  </span>
+                </div>
+              </div>
             ))}
             
             {isLoading && results.length === 0 && (
-              <Box px={3} py={2}>
-                <Text fontSize="sm" color="fg.subtle">{t('trade.searching')}</Text>
-              </Box>
+              <div className="px-3 py-2">
+                <p className="text-sm text-muted-foreground">{t('trade.searching')}</p>
+              </div>
             )}
 
             {!isLoading && !hasError && results.length === 0 && search.length > 0 && (
-              <Box px={3} py={2}>
-                <Text fontSize="sm" color="fg.subtle">{t('trade.no_results')}</Text>
-              </Box>
+              <div className="px-3 py-2">
+                <p className="text-sm text-muted-foreground">{t('trade.no_results')}</p>
+              </div>
             )}
 
             {!isLoading && hasError && (
-              <Box px={3} py={2}>
-                <Text fontSize="sm" color="red.400">{t('trade.fetch_failed')}</Text>
-              </Box>
+              <div className="px-3 py-2">
+                <p className="text-sm text-destructive">{t('trade.fetch_failed')}</p>
+              </div>
             )}
-          </VStack>
-        </Box>
+          </div>
+        </div>
       )}
 
       {error && (
-        <Field.ErrorText id={`${inputId}-error`} mt={1.5} fontSize="sm" color="red.400">
+        <p className="mt-1.5 text-sm text-destructive">
           {error}
-        </Field.ErrorText>
+        </p>
       )}
-    </Field.Root>
+    </div>
   );
 }

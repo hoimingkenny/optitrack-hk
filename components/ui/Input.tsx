@@ -1,61 +1,50 @@
-'use client';
+import * as React from "react"
+import { cn } from "@/lib/utils"
 
-import { Box, Input as ChakraInput, Field } from '@chakra-ui/react';
-import { forwardRef, InputHTMLAttributes } from 'react';
-
-interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> {
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
   helperText?: string;
 }
 
-const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, error, helperText, id, required, ...props }, ref) => {
-    const inputId = id || label?.toLowerCase().replace(/\s/g, '-');
+const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  ({ className, type, label, error, helperText, id, required, ...props }, ref) => {
+    const inputId = id || (label ? label.toLowerCase().replace(/\s/g, '-') : undefined);
 
     return (
-      <Field.Root invalid={!!error} required={required} w="full">
+      <div className="w-full space-y-1.5">
         {label && (
-          <Field.Label htmlFor={inputId} fontSize="sm" fontWeight="medium" color="fg.muted" mb={1.5}>
+          <label
+            htmlFor={inputId}
+            className="text-sm font-medium text-muted-foreground"
+          >
             {label}
-            {required && <Box as="span" color="red.400" ml={1}>*</Box>}
-          </Field.Label>
+            {required && <span className="ml-1 text-destructive">*</span>}
+          </label>
         )}
-        <ChakraInput
-          ref={ref}
+        <input
+          type={type}
+          className={cn(
+            "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+            error && "border-destructive focus-visible:ring-destructive",
+            className
+          )}
           id={inputId}
-          bg="bg.surface"
-          borderColor={error ? 'red.500' : 'border.default'}
-          color="fg.default"
-          borderRadius="lg"
-          px={3}
-          py={2}
-          _placeholder={{ color: 'fg.subtle' }}
-          _focus={{
-            borderColor: error ? 'red.500' : 'brand.500',
-            boxShadow: 'none',
-            outline: 'none',
-          }}
-          _disabled={{ opacity: 0.5, cursor: 'not-allowed' }}
-          aria-invalid={error ? 'true' : 'false'}
-          aria-describedby={error ? `${inputId}-error` : helperText ? `${inputId}-helper` : undefined}
+          ref={ref}
+          aria-invalid={!!error}
           {...props}
         />
         {error && (
-          <Field.ErrorText id={`${inputId}-error`} mt={1.5} fontSize="sm" color="red.400">
-            {error}
-          </Field.ErrorText>
+          <p className="text-sm text-destructive">{error}</p>
         )}
         {helperText && !error && (
-          <Field.HelperText id={`${inputId}-helper`} mt={1.5} fontSize="sm" color="fg.subtle">
-            {helperText}
-          </Field.HelperText>
+          <p className="text-sm text-muted-foreground">{helperText}</p>
         )}
-      </Field.Root>
-    );
+      </div>
+    )
   }
-);
+)
+Input.displayName = "Input"
 
-Input.displayName = 'Input';
-
-export default Input;
+export { Input }
+export default Input

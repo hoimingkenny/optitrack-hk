@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { SimpleGrid, VStack } from '@chakra-ui/react';
 import Modal from '@/components/ui/Modal';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
@@ -122,7 +121,7 @@ export default function EditTradeModal({
         </>
       }
     >
-      <VStack gap={4}>
+      <div className="flex flex-col gap-4">
         <Input
           label={t('exposure.option_name')}
           value={optionName}
@@ -130,7 +129,7 @@ export default function EditTradeModal({
           readOnly
         />
         
-        <SimpleGrid columns={2} gap={4} w="full">
+        <div className="grid grid-cols-2 gap-4 w-full">
           <Input
             label={t('trade.trade_date')}
             type="date"
@@ -148,9 +147,9 @@ export default function EditTradeModal({
             required
             disabled // Editing direction is not allowed
           />
-        </SimpleGrid>
+        </div>
 
-        <SimpleGrid columns={2} gap={4} w="full">
+        <div className="grid grid-cols-2 gap-4 w-full">
           <Input
             label={t('trade.premium_label')}
             type="number"
@@ -168,9 +167,9 @@ export default function EditTradeModal({
             error={errors.contracts}
             required
           />
-        </SimpleGrid>
+        </div>
 
-        <SimpleGrid columns={2} gap={4} w="full">
+        <div className="grid grid-cols-2 gap-4 w-full">
           <Input
             label={t('trade.total_premium')}
             value={formatHKD(totalPremium)}
@@ -195,8 +194,8 @@ export default function EditTradeModal({
             value={formData.margin_percent}
             onChange={(e) => handleChange('margin_percent', e.target.value)}
           />
-        </SimpleGrid>
-      </VStack>
+        </div>
+      </div>
     </Modal>
   );
 }

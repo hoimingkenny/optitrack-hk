@@ -1,12 +1,12 @@
 'use client';
 
-import { Box, Heading, Table, Text, HStack } from '@chakra-ui/react';
 import { useMemo, useState } from 'react';
 import type { OptionWithSummary } from '@/db/schema';
 import { formatHKD } from '@/utils/helpers/pnl-calculator';
 import { formatDateToYYYYMMDD } from '@/utils/helpers/date-helpers';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/components/providers/LanguageProvider';
+import { ChevronUp, ChevronDown } from 'lucide-react';
 
 type SortField = 'name' | 'days' | 'net' | 'exposure';
 type SortOrder = 'asc' | 'desc';
@@ -64,8 +64,6 @@ export default function SellPutExposure({ options, timeRange = 'all' }: SellPutE
     });
   }, [options, timeRange]);
 
-  // 1. First, always calculate the Top 5 items based on Exposure (Covering Cash)
-  // This memo only updates when the filteredOptions change, NOT when sorting changes.
   const top5Items = useMemo(() => {
     const now = new Date();
     const mapped = filteredOptions.map(o => {
@@ -85,19 +83,11 @@ export default function SellPutExposure({ options, timeRange = 'all' }: SellPutE
       };
     });
 
-    // Sort descending by coveringCash and take top 5
-    // Explicitly create a new array and sort it
     const sortedByExposure = [...mapped].sort((a, b) => b.coveringCash - a.coveringCash);
-    
-    // Log for debugging (will appear in browser console)
-    console.log('SellPutExposure: Recalculated Top 5. Top value:', sortedByExposure[0]?.coveringCash);
-    
     return sortedByExposure.slice(0, 5);
-  }, [filteredOptions]);
+  }, [filteredOptions, t]);
 
-  // 2. Then, sort these fixed Top 5 items based on user selection
   const topSellPuts = useMemo(() => {
-    // If top5Items is already sliced to 5, this will only sort those 5 items.
     return [...top5Items].sort((a, b) => {
         let comparison = 0;
         switch (sortField) {
@@ -119,135 +109,95 @@ export default function SellPutExposure({ options, timeRange = 'all' }: SellPutE
   }, [top5Items, sortField, sortOrder]);
 
   return (
-    <Box 
-      bg="bg.surface" 
-      p={6} 
-      borderRadius="xl" 
-      borderWidth="1px" 
-      borderColor="border.default"
-    >
-      <Heading size="md" mb={4} color="fg.default">
+    <div className="bg-card p-6 rounded-xl border border-border">
+      <h2 className="text-lg font-semibold mb-4 text-foreground">
         {t('exposure.top5_sell_put')}
-      </Heading>
-      <Box overflow="auto" maxH="320px">
-        <Table.Root size="sm" variant="outline" stickyHeader>
-          <Table.Header>
-            <Table.Row height="2.75rem">
-              <Table.ColumnHeader 
-                textAlign="left" 
-                px={4} 
-                cursor="pointer" 
+      </h2>
+      <div className="overflow-auto max-h-[320px]">
+        <table className="w-full border-collapse text-sm">
+          <thead className="sticky top-0 bg-card z-10 border-b border-border">
+            <tr className="h-11">
+              <th 
+                className="text-left px-4 cursor-pointer hover:bg-muted transition-colors font-medium text-muted-foreground" 
                 onClick={() => handleSort('name')}
-                _hover={{ bg: 'bg.muted' }}
               >
-                <HStack gap={1}>
-                  <Text>{t('exposure.option_name')}</Text>
+                <div className="flex items-center gap-1">
+                  <span>{t('exposure.option_name')}</span>
                   {sortField === 'name' && (
-                    sortOrder === 'asc' ? <ChevronUpIcon className="w-3 h-3" /> : <ChevronDownIcon className="w-3 h-3" />
+                    sortOrder === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
                   )}
-                </HStack>
-              </Table.ColumnHeader>
-              <Table.ColumnHeader 
-                textAlign="center" 
-                px={4} 
-                cursor="pointer" 
+                </div>
+              </th>
+              <th 
+                className="text-center px-4 cursor-pointer hover:bg-muted transition-colors font-medium text-muted-foreground" 
                 onClick={() => handleSort('days')}
-                _hover={{ bg: 'bg.muted' }}
               >
-                <HStack gap={1} justifyContent="center">
-                  <Text>{t('exposure.days')}</Text>
+                <div className="flex items-center gap-1 justify-center">
+                  <span>{t('exposure.days')}</span>
                   {sortField === 'days' && (
-                    sortOrder === 'asc' ? <ChevronUpIcon className="w-3 h-3" /> : <ChevronDownIcon className="w-3 h-3" />
+                    sortOrder === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
                   )}
-                </HStack>
-              </Table.ColumnHeader>
-              <Table.ColumnHeader 
-                textAlign="center" 
-                px={4} 
-                cursor="pointer" 
+                </div>
+              </th>
+              <th 
+                className="text-center px-4 cursor-pointer hover:bg-muted transition-colors font-medium text-muted-foreground" 
                 onClick={() => handleSort('net')}
-                _hover={{ bg: 'bg.muted' }}
               >
-                <HStack gap={1} justifyContent="center">
-                  <Text>{t('exposure.net')}</Text>
+                <div className="flex items-center gap-1 justify-center">
+                  <span>{t('exposure.net')}</span>
                   {sortField === 'net' && (
-                    sortOrder === 'asc' ? <ChevronUpIcon className="w-3 h-3" /> : <ChevronDownIcon className="w-3 h-3" />
+                    sortOrder === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
                   )}
-                </HStack>
-              </Table.ColumnHeader>
-              <Table.ColumnHeader 
-                textAlign="right" 
-                px={4} 
-                cursor="pointer" 
+                </div>
+              </th>
+              <th 
+                className="text-right px-4 cursor-pointer hover:bg-muted transition-colors font-medium text-muted-foreground" 
                 onClick={() => handleSort('exposure')}
-                _hover={{ bg: 'bg.muted' }}
               >
-                <HStack gap={1} justifyContent="flex-end">
-                  <Text>{t('exposure.covering_cash')}</Text>
+                <div className="flex items-center gap-1 justify-end">
+                  <span>{t('exposure.covering_cash')}</span>
                   {sortField === 'exposure' && (
-                    sortOrder === 'asc' ? <ChevronUpIcon className="w-3 h-3" /> : <ChevronDownIcon className="w-3 h-3" />
+                    sortOrder === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
                   )}
-                </HStack>
-              </Table.ColumnHeader>
-            </Table.Row>
-          </Table.Header>
-          <Table.Body>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
             {topSellPuts.length > 0 ? (
-              topSellPuts.map((option) => {
-                return (
-                  <Table.Row 
-                    key={option.id}
-                    height="2.75rem"
-                    onClick={() => router.push(`/option/${option.id}`)}
-                    cursor="pointer"
-                    _hover={{ bg: 'bg.subtle' }}
-                    transition="background 0.2s"
-                  >
-                    <Table.Cell textAlign="left" px={4} fontWeight="medium" color="fg.default">
-                      {option.optionName}
-                    </Table.Cell>
-                    <Table.Cell textAlign="center" px={4} color="fg.muted">
-                      {option.daysLeft}{t('exposure.days_suffix')}
-                    </Table.Cell>
-                    <Table.Cell textAlign="center" px={4} color="fg.default">
-                      {option.net_contracts}
-                    </Table.Cell>
-                    <Table.Cell textAlign="right" px={4} fontWeight="medium" color="#D73535">
-                      {formatHKD(option.coveringCash)}
-                    </Table.Cell>
-                  </Table.Row>
-                );
-              })
+              topSellPuts.map((option) => (
+                <tr 
+                  key={option.id}
+                  className="h-11 border-b border-border/50 hover:bg-muted/50 transition-colors cursor-pointer"
+                  onClick={() => router.push(`/option/${option.id}`)}
+                >
+                  <td className="text-left px-4 font-medium text-foreground">
+                    {option.optionName}
+                  </td>
+                  <td className="text-center px-4 text-muted-foreground">
+                    {option.daysLeft}{t('exposure.days_suffix')}
+                  </td>
+                  <td className="text-center px-4 text-foreground">
+                    {option.net_contracts}
+                  </td>
+                  <td className="text-right px-4 font-medium text-[#D73535]">
+                    {formatHKD(option.coveringCash)}
+                  </td>
+                </tr>
+              ))
             ) : (
-              <Table.Row height="2.75rem">
-                <Table.Cell colSpan={4} textAlign="center" color="fg.muted" py={4}>
+              <tr className="h-11">
+                <td colSpan={4} className="text-center text-muted-foreground py-8">
                   {t('exposure.no_sell_puts')}
-                </Table.Cell>
-              </Table.Row>
+                </td>
+              </tr>
             )}
-          </Table.Body>
-        </Table.Root>
-      </Box>
-      <Text fontSize="xs" color="fg.muted" mt={3}>
+          </tbody>
+        </table>
+      </div>
+      <p className="text-xs text-muted-foreground mt-3">
         {t('exposure.calculation_note')}
-      </Text>
-    </Box>
-  );
-}
-
-// Icons
-function ChevronUpIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-    </svg>
-  );
-}
-
-function ChevronDownIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-    </svg>
+      </p>
+    </div>
   );
 }

@@ -1,33 +1,42 @@
-'use client';
+"use client"
 
-import { Switch as ChakraSwitch } from '@chakra-ui/react';
-import { forwardRef, ReactNode } from 'react';
+import * as React from "react"
+import * as SwitchPrimitives from "@radix-ui/react-switch"
 
-interface SwitchProps {
-  label?: ReactNode;
-  checked?: boolean;
-  onCheckedChange?: (details: { checked: boolean }) => void;
-  disabled?: boolean;
+import { cn } from "@/lib/utils"
+
+export interface SwitchProps extends React.ComponentPropsWithoutRef<typeof SwitchPrimitives.Root> {
+  label?: React.ReactNode;
 }
 
-export const Switch = forwardRef<HTMLLabelElement, SwitchProps>(
-  ({ label, checked, onCheckedChange, disabled, ...props }, ref) => {
-    return (
-      <ChakraSwitch.Root
-        checked={checked}
-        onCheckedChange={onCheckedChange}
-        disabled={disabled}
-        ref={ref}
-        {...props}
+const Switch = React.forwardRef<
+  React.ElementRef<typeof SwitchPrimitives.Root>,
+  SwitchProps
+>(({ className, label, ...props }, ref) => (
+  <div className="flex items-center space-x-2">
+    <SwitchPrimitives.Root
+      className={cn(
+        "peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=unchecked]:bg-input",
+        className
+      )}
+      {...props}
+      ref={ref}
+    >
+      <SwitchPrimitives.Thumb
+        className={cn(
+          "pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg ring-0 transition-transform data-[state=checked]:translate-x-4 data-[state=unchecked]:translate-x-0"
+        )}
+      />
+    </SwitchPrimitives.Root>
+    {label && (
+      <label
+        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
       >
-        <ChakraSwitch.HiddenInput />
-        <ChakraSwitch.Control>
-          <ChakraSwitch.Thumb />
-        </ChakraSwitch.Control>
-        {label && <ChakraSwitch.Label>{label}</ChakraSwitch.Label>}
-      </ChakraSwitch.Root>
-    );
-  }
-);
+        {label}
+      </label>
+    )}
+  </div>
+))
+Switch.displayName = SwitchPrimitives.Root.displayName
 
-Switch.displayName = 'Switch';
+export { Switch }

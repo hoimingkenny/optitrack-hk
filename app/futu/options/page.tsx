@@ -1,23 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import {
-  Box,
-  Container,
-  Heading,
-  Input,
-  Button,
-  Table,
-  VStack,
-  HStack,
-  Text,
-  Spinner,
-  Badge,
-  Center,
-} from '@chakra-ui/react';
 import { OptionExpirationDate, OptionChainItem } from '@/utils/futu/client';
-import { toaster } from '@/components/providers/ChakraProvider';
-import Card from '@/components/ui/Card';
+import { toast } from '@/components/ui/Toast';
+import { Card, CardContent } from '@/components/ui/Card';
 import DashboardNav from '@/components/layout/DashboardNav';
 import { supabase } from '@/utils/supabase';
 import { useRouter } from 'next/navigation';
@@ -26,6 +12,11 @@ import Modal from '@/components/ui/Modal';
 import TradeForm from '@/components/trades/TradeForm';
 import { CreateOptionWithTradeInput } from '@/db/schema';
 import { useLanguage } from '@/components/providers/LanguageProvider';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Badge } from '@/components/ui/Badge';
+import { Loader2, Search } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function FutuOptionsPage() {
   const router = useRouter();
@@ -81,16 +72,10 @@ export default function FutuOptionsPage() {
     try {
       await supabase.auth.signOut();
       router.push('/');
-      toaster.create({
-        title: t('auth.sign_out_success'),
-        type: 'info'
-      });
+      toast.info(t('auth.sign_out_success'));
     } catch (error) {
       console.error('Sign out error:', error);
-      toaster.create({
-        title: t('auth.sign_out_fail'),
-        type: 'error'
-      });
+      toast.error(t('auth.sign_out_fail'));
     }
   };
 
@@ -174,16 +159,10 @@ export default function FutuOptionsPage() {
         throw new Error(error.error || 'Failed to create option');
       }
       
-      toaster.create({
-        title: t('futu.option_logged_success'),
-        type: 'success'
-      });
+      toast.success(t('futu.option_logged_success'));
       setShowLogModal(false);
     } catch (error: any) {
-      toaster.create({
-        title: error.message || t('page.create_option_fail'),
-        type: 'error'
-      });
+      toast.error(error.message || t('page.create_option_fail'));
     } finally {
       setLogLoading(false);
     }
@@ -232,10 +211,7 @@ export default function FutuOptionsPage() {
   const handleSearch = async (overrideSymbol?: string) => {
     const searchSymbol = typeof overrideSymbol === 'string' ? overrideSymbol : symbol;
     if (!searchSymbol) {
-      toaster.create({
-        title: t('futu.enter_symbol_error'),
-        type: 'error'
-      });
+      toast.error(t('futu.enter_symbol_error'));
       return;
     }
 
@@ -256,17 +232,11 @@ export default function FutuOptionsPage() {
         } else {
           const errMsg = quoteData.error || 'Price not available';
           console.error('Quote fetch failed:', errMsg);
-          toaster.create({
-            title: t('futu.quote_fetch_fail').replace('{error}', errMsg),
-            type: 'warning'
-          });
+          toast.warning(t('futu.quote_fetch_fail').replace('{error}', errMsg));
         }
       } catch (e: any) {
         console.error('Failed to fetch quote', e);
-        toaster.create({
-          title: t('futu.quote_fetch_fail').replace('{error}', e.message),
-          type: 'error'
-        });
+        toast.error(t('futu.quote_fetch_fail').replace('{error}', e.message));
       }
 
       // 2. Fetch Expiration Dates
@@ -282,17 +252,11 @@ export default function FutuOptionsPage() {
         // Automatically fetch the first date
         handleFetchChain(result[0].strikeTime, searchSymbol);
       } else {
-        toaster.create({
-          title: t('futu.no_expirations'),
-          type: 'info'
-        });
+        toast.info(t('futu.no_expirations'));
       }
     } catch (error: any) {
       console.error('Failed to fetch expiration dates', error);
-      toaster.create({
-        title: error.message,
-        type: 'error'
-      });
+      toast.error(error.message);
     } finally {
       setLoading(false);
     }
@@ -318,16 +282,10 @@ export default function FutuOptionsPage() {
         
         setChainData(result);
         if (result.length === 0) {
-            toaster.create({
-                title: t('futu.no_chain_data').replace('{date}', date),
-                type: 'info'
-            });
+            toast.info(t('futu.no_chain_data').replace('{date}', date));
         }
     } catch (error: any) {
-        toaster.create({
-            title: error.message,
-            type: 'error'
-        });
+        toast.error(error.message);
     } finally {
         setChainLoading(false);
     }
@@ -395,173 +353,142 @@ export default function FutuOptionsPage() {
 
   if (!mounted || initialLoading) {
     return (
-      <Box h="100vh" w="100vw">
-        <Center h="full">
-          <VStack gap={4}>
-            <Spinner size="xl" color="brand.500" />
-            <Text color="fg.muted" fontWeight="medium">{t('futu.loading_dashboard')}</Text>
-          </VStack>
-        </Center>
-      </Box>
+      <div className="h-screen w-screen">
+        <div className="flex flex-col items-center justify-center h-full gap-4">
+          <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
+          <p className="text-muted-foreground font-medium">{t('futu.loading_dashboard')}</p>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Box minH="100vh" bg="bg.canvas">
+    <div className="min-h-screen bg-background">
       <DashboardNav onSignOut={handleSignOut} userEmail={user?.email} />
       
-      <Container maxW="7xl" mx="auto" px={{ base: 4, sm: 6, lg: 8 }} py={8}>
-        <VStack gap={8} align="stretch">
-          <Card padding="none">
-            <Box p={4} borderBottomWidth="1px" borderColor="border.default">
-              <VStack align="stretch" gap={4} mb={4}>
-                <HStack gap={4} wrap="wrap" justify="space-between" align="center">
-                  <HStack gap={2}>
-                    <Box position="relative" width="200px" onClick={(e) => e.stopPropagation()}>
-                      <Input
-                        placeholder={t('futu.search_placeholder')}
-                        value={symbol}
-                        onChange={handleInputChange}
-                        onFocus={() => {
-                          if (suggestions.length > 0) setShowSuggestions(true);
-                        }}
-                        size="sm"
-                        autoComplete="off"
-                      />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex flex-col gap-8">
+          <Card className="p-0 overflow-hidden">
+            <div className="p-4 border-b border-border">
+              <div className="flex flex-col gap-4 mb-4">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-2">
+                    <div className="relative w-52" onClick={(e) => e.stopPropagation()}>
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder={t('futu.search_placeholder')}
+                          value={symbol}
+                          onChange={handleInputChange}
+                          onFocus={() => {
+                            if (suggestions.length > 0) setShowSuggestions(true);
+                          }}
+                          className="pl-9 h-9"
+                          autoComplete="off"
+                        />
+                      </div>
                       {showSuggestions && suggestions.length > 0 && (
-                        <Box
-                          position="absolute"
-                          top="100%"
-                          left={0}
-                          right={0}
-                          zIndex={1000}
-                          bg="bg.panel"
-                          border="1px solid"
-                          borderColor="border.default"
-                          borderRadius="md"
-                          mt={1}
-                          shadow="lg"
-                          maxH="300px"
-                          overflowY="auto"
-                        >
+                        <div className="absolute top-full left-0 right-0 z-[1000] bg-popover border border-border rounded-md mt-1 shadow-lg max-h-[300px] overflow-y-auto">
                           {suggestions.map((item) => (
-                            <Box
+                            <div
                               key={item.code}
-                              p={2}
-                              cursor="pointer"
-                              _hover={{ bg: 'bg.muted' }}
+                              className="p-2 cursor-pointer hover:bg-muted transition-colors"
                               onClick={() => handleSelectSuggestion(item)}
                             >
-                              <HStack justify="space-between">
-                                <Text fontWeight="bold" fontSize="sm">{item.code}</Text>
-                                <Text flex={1} px={2} truncate fontSize="sm">{item.name}</Text>
-                                <Text fontSize="xs" color="fg.muted">HK</Text>
-                              </HStack>
-                            </Box>
+                              <div className="flex items-center justify-between">
+                                <span className="font-bold text-sm">{item.code}</span>
+                                <span className="flex-1 px-2 truncate text-sm">{item.name}</span>
+                                <span className="text-xs text-muted-foreground">HK</span>
+                              </div>
+                            </div>
                           ))}
-                        </Box>
+                        </div>
                       )}
-                    </Box>
+                    </div>
                     <Button 
                       onClick={() => handleSearch()} 
-                      loading={loading}
+                      disabled={loading}
                       size="sm"
-                      colorPalette="blue"
                     >
+                      {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       {t('futu.search_btn')}
                     </Button>
-                  </HStack>
+                  </div>
 
-                  <HStack gap={6}>
-                    <HStack gap={3}>
-                      <HStack gap={0} border="1px solid" borderColor="border.default" borderRadius="md" overflow="hidden" bg="bg.muted">
+                  <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center border border-border rounded-md overflow-hidden bg-muted p-0.5">
                         <Button
                           size="sm"
-                          variant={filterType === 1 ? 'solid' : 'ghost'}
-                          colorPalette="blue"
-                          fontWeight={filterType === 1 ? 'bold' : 'normal'}
+                          variant={filterType === 1 ? 'default' : 'ghost'}
+                          className={cn(
+                            "h-8 rounded-sm px-4",
+                            filterType === 1 ? "shadow-sm" : "hover:bg-transparent"
+                          )}
                           onClick={() => setFilterType(1)}
-                          borderRadius={0}
-                          px={4}
                         >
                           {t('futu.call')}
                         </Button>
                         <Button
                           size="sm"
-                          variant={filterType === 2 ? 'solid' : 'ghost'}
-                          colorPalette="blue"
-                          fontWeight={filterType === 2 ? 'bold' : 'normal'}
+                          variant={filterType === 2 ? 'default' : 'ghost'}
+                          className={cn(
+                            "h-8 rounded-sm px-4",
+                            filterType === 2 ? "shadow-sm" : "hover:bg-transparent"
+                          )}
                           onClick={() => setFilterType(2)}
-                          borderRadius={0}
-                          px={4}
-                          borderLeft="1px solid"
-                          borderColor="border.default"
                         >
                           {t('futu.put')}
                         </Button>
-                      </HStack>
-                    </HStack>
+                      </div>
+                    </div>
 
-                    <HStack gap={3}>
-                      <HStack gap={0} border="1px solid" borderColor="border.default" borderRadius="md" overflow="hidden" bg="bg.muted">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center border border-border rounded-md overflow-hidden bg-muted p-0.5">
                         <Button
                           size="sm"
-                          variant={filterMoneyness === 0 ? 'solid' : 'ghost'}
-                          colorPalette="blue"
-                          fontWeight={filterMoneyness === 0 ? 'bold' : 'normal'}
+                          variant={filterMoneyness === 0 ? 'default' : 'ghost'}
+                          className={cn(
+                            "h-8 rounded-sm px-4",
+                            filterMoneyness === 0 ? "shadow-sm" : "hover:bg-transparent"
+                          )}
                           onClick={() => setFilterMoneyness(0)}
-                          borderRadius={0}
-                          px={4}
                         >
                           {t('futu.all')}
                         </Button>
                         <Button
                           size="sm"
-                          variant={filterMoneyness === 1 ? 'solid' : 'ghost'}
-                          colorPalette="blue"
-                          fontWeight={filterMoneyness === 1 ? 'bold' : 'normal'}
+                          variant={filterMoneyness === 1 ? 'default' : 'ghost'}
+                          className={cn(
+                            "h-8 rounded-sm px-4",
+                            filterMoneyness === 1 ? "shadow-sm" : "hover:bg-transparent"
+                          )}
                           onClick={() => setFilterMoneyness(1)}
-                          borderRadius={0}
-                          px={4}
-                          borderLeft="1px solid"
-                          borderColor="border.default"
                         >
                           {t('futu.itm')}
                         </Button>
                         <Button
                           size="sm"
-                          variant={filterMoneyness === 2 ? 'solid' : 'ghost'}
-                          colorPalette="blue"
-                          fontWeight={filterMoneyness === 2 ? 'bold' : 'normal'}
+                          variant={filterMoneyness === 2 ? 'default' : 'ghost'}
+                          className={cn(
+                            "h-8 rounded-sm px-4",
+                            filterMoneyness === 2 ? "shadow-sm" : "hover:bg-transparent"
+                          )}
                           onClick={() => setFilterMoneyness(2)}
-                          borderRadius={0}
-                          px={4}
-                          borderLeft="1px solid"
-                          borderColor="border.default"
                         >
                           {t('futu.otm')}
                         </Button>
-                      </HStack>
-                    </HStack>
-                  </HStack>
-                </HStack>
-              </VStack>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
-              <VStack align="stretch" gap={4}>
-
-
+              <div className="flex flex-col gap-4">
                 {/* Expiration Date Tabs - Integrated into Header */}
                 {data.length > 0 && (
-                  <Box borderBottomWidth="1px" borderColor="border.default" pb={2}>
-                    <HStack 
-                      gap={2} 
-                      overflowX="auto" 
-                      css={{
-                        '&::-webkit-scrollbar': { display: 'none' },
-                        msOverflowStyle: 'none',
-                        scrollbarWidth: 'none',
-                      }}
-                    >
+                  <div className="border-b border-border pb-2">
+                    <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
                       {data.map((item) => {
                         const isActive = selectedDate === item.strikeTime;
                         const dateParts = item.strikeTime.split('-');
@@ -570,63 +497,58 @@ export default function FutuOptionsPage() {
                           <Button
                             key={item.strikeTime}
                             size="sm"
-                            variant={isActive ? 'solid' : 'subtle'}
-                            colorPalette={isActive ? 'blue' : 'gray'}
-                            fontWeight={isActive ? 'bold' : 'normal'}
+                            variant={isActive ? 'default' : 'secondary'}
+                            className={cn(
+                              "px-6 min-w-max rounded-full transition-all",
+                              isActive ? "shadow-md" : "hover:bg-secondary/80"
+                            )}
                             onClick={() => handleFetchChain(item.strikeTime)}
-                            px={6}
-                            minW="max-content"
-                            borderRadius="full"
-                            boxShadow={isActive ? 'md' : 'none'}
-                            _hover={{
-                              bg: isActive ? 'blue.600' : 'gray.200',
-                            }}
                           >
                             {displayDate}
                             {item.expirationCycle === 1 && (
-                              <Text as="span" fontSize="2xs" ml={1} verticalAlign="super">W</Text>
+                              <span className="text-[10px] ml-1 align-super">W</span>
                             )}
                           </Button>
                         );
                       })}
-                    </HStack>
-                  </Box>
+                    </div>
+                  </div>
                 )}
-              </VStack>
-            </Box>
+              </div>
+            </div>
 
-            <Box>
+            <div>
               {loading || chainLoading ? (
-                <Box display="flex" justifyContent="center" py={20}>
-                  <Spinner size="xl" color="blue.500" />
-                </Box>
+                <div className="flex justify-center py-20">
+                  <Loader2 className="h-12 w-12 animate-spin text-blue-500" />
+                </div>
               ) : chainData.length > 0 ? (
-                <Box overflowX="auto">
-                  <Table.Root size="sm" variant="outline" stickyHeader striped>
-                    <Table.Header>
-                      <Table.Row bg="bg.muted">
-                        <Table.ColumnHeader width="120px" bg="bg.muted" fontWeight="bold">{t('futu.strike')}</Table.ColumnHeader>
-                        <Table.ColumnHeader textAlign="right" bg="bg.muted">{t('futu.last_premium')}</Table.ColumnHeader>
-                        <Table.ColumnHeader textAlign="right" bg="bg.muted">{t('futu.bid')}</Table.ColumnHeader>
-                        <Table.ColumnHeader textAlign="right" bg="bg.muted">{t('futu.ask')}</Table.ColumnHeader>
-                        <Table.ColumnHeader textAlign="right" bg="bg.muted">{t('futu.vol')}</Table.ColumnHeader>
-                        <Table.ColumnHeader textAlign="right" bg="bg.muted">{t('futu.oi')}</Table.ColumnHeader>
-                        <Table.ColumnHeader textAlign="right" bg="bg.muted">{t('futu.delta')}</Table.ColumnHeader>
-                        <Table.ColumnHeader bg="bg.muted">{t('futu.type')}</Table.ColumnHeader>
-                        <Table.ColumnHeader bg="bg.muted">{t('futu.code')}</Table.ColumnHeader>
-                        <Table.ColumnHeader bg="bg.muted" width="80px">{t('futu.action')}</Table.ColumnHeader>
-                      </Table.Row>
-                    </Table.Header>
-                    <Table.Body>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="bg-muted text-muted-foreground border-b border-border">
+                        <th className="px-4 py-3 text-left font-bold w-[120px]">{t('futu.strike')}</th>
+                        <th className="px-4 py-3 text-right">{t('futu.last_premium')}</th>
+                        <th className="px-4 py-3 text-right">{t('futu.bid')}</th>
+                        <th className="px-4 py-3 text-right">{t('futu.ask')}</th>
+                        <th className="px-4 py-3 text-right">{t('futu.vol')}</th>
+                        <th className="px-4 py-3 text-right">{t('futu.oi')}</th>
+                        <th className="px-4 py-3 text-right">{t('futu.delta')}</th>
+                        <th className="px-4 py-3 text-left">{t('futu.type')}</th>
+                        <th className="px-4 py-3 text-left">{t('futu.code')}</th>
+                        <th className="px-4 py-3 text-left w-[80px]">{t('futu.action')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
                       {displayRows.map((row, index) => {
                         if ('isPriceRow' in row) {
                           const price = row.price;
                           return (
-                            <Table.Row key={`price-${index}`} bg="blue.50">
-                              <Table.Cell colSpan={10} textAlign="center" fontWeight="bold" color="blue.600">
+                            <tr key={`price-${index}`} className="bg-blue-50/50">
+                              <td colSpan={10} className="px-4 py-2 text-center font-bold text-blue-600 border-y border-blue-100">
                                 {t('futu.current_price').replace('{price}', typeof price === 'number' ? price.toFixed(3) : price)}
-                              </Table.Cell>
-                            </Table.Row>
+                              </td>
+                            </tr>
                           );
                         }
                         
@@ -638,85 +560,98 @@ export default function FutuOptionsPage() {
                         );
 
                         return (
-                          <Table.Row key={item.code} _hover={{ bg: 'blue.subtle' }} bg={isITM ? "rgba(49, 130, 206, 0.05)" : undefined}>
-                            <Table.Cell fontWeight="bold" fontSize="md" bg={isITM ? "blue.50" : "bg.muted/30"} color={isITM ? "blue.700" : "inherit"}>
+                          <tr 
+                            key={item.code} 
+                            className={cn(
+                              "border-b border-border transition-colors hover:bg-blue-50/30",
+                              isITM && "bg-blue-50/10"
+                            )}
+                          >
+                            <td className={cn(
+                              "px-4 py-3 font-bold text-base",
+                              isITM ? "bg-blue-50 text-blue-700" : "bg-muted/10"
+                            )}>
                               {item.strikePrice.toFixed(2)}
                               {isITM && (
-                                <Badge size="xs" colorPalette="blue" ml={2} variant="subtle">ITM</Badge>
+                                <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0 h-4 bg-blue-100 text-blue-700 border-none">ITM</Badge>
                               )}
-                            </Table.Cell>
-                            <Table.Cell textAlign="right" color="green.600" fontWeight="bold">
+                            </td>
+                            <td className="px-4 py-3 text-right text-green-600 font-bold">
                               {item.premium !== undefined ? item.premium.toFixed(3) : '-'}
-                            </Table.Cell>
-                            <Table.Cell textAlign="right" color="green.600">
+                            </td>
+                            <td className="px-4 py-3 text-right text-green-600">
                               {item.bidPrice !== undefined ? item.bidPrice.toFixed(3) : '-'}
-                            </Table.Cell>
-                            <Table.Cell textAlign="right" color="green.600">
+                            </td>
+                            <td className="px-4 py-3 text-right text-green-600">
                               {item.askPrice !== undefined ? item.askPrice.toFixed(3) : '-'}
-                            </Table.Cell>
-                            <Table.Cell textAlign="right">
+                            </td>
+                            <td className="px-4 py-3 text-right">
                               {item.volume !== undefined ? item.volume : '-'}
-                            </Table.Cell>
-                            <Table.Cell textAlign="right">
+                            </td>
+                            <td className="px-4 py-3 text-right">
                               {item.openInterest !== undefined ? item.openInterest : '-'}
-                            </Table.Cell>
-                            <Table.Cell textAlign="right">
+                            </td>
+                            <td className="px-4 py-3 text-right">
                               {item.delta !== undefined ? item.delta.toFixed(3) : '-'}
-                            </Table.Cell>
-                            <Table.Cell>
-                              <Badge colorPalette={item.optionType === 1 ? 'green' : 'red'} size="xs" variant="solid">
+                            </td>
+                            <td className="px-4 py-3">
+                              <Badge 
+                                className={cn(
+                                  "text-[10px] px-1.5 py-0 h-4 border-none",
+                                  item.optionType === 1 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                                )}
+                              >
                                 {item.optionType === 1 ? 'CALL' : 'PUT'}
                               </Badge>
-                            </Table.Cell>
-                            <Table.Cell fontFamily="mono" fontSize="2xs" color="fg.muted">{item.code}</Table.Cell>
-                            <Table.Cell>
+                            </td>
+                            <td className="px-4 py-3 font-mono text-[10px] text-muted-foreground">{item.code}</td>
+                            <td className="px-4 py-3">
                               <Button 
-                                size="xs" 
-                                colorPalette="blue" 
+                                size="sm" 
                                 variant="outline"
+                                className="h-7 text-[10px] border-blue-200 text-blue-700 hover:bg-blue-50 hover:text-blue-800"
                                 onClick={() => handleLogTrade(item)}
                               >
                                 {t('futu.log_btn')}
                               </Button>
-                            </Table.Cell>
-                          </Table.Row>
+                            </td>
+                          </tr>
                         );
                       })}
-                    </Table.Body>
-                  </Table.Root>
-                </Box>
+                    </tbody>
+                  </table>
+                </div>
               ) : selectedDate ? (
-                <Box py={20} textAlign="center" color="fg.muted">
+                <div className="py-20 text-center text-muted-foreground">
                   {t('futu.no_data_date')}
-                </Box>
+                </div>
               ) : (
-                <Box py={20} textAlign="center" color="fg.muted">
+                <div className="py-20 text-center text-muted-foreground">
                   {t('futu.enter_symbol_hint')}
-                </Box>
+                </div>
               )}
-            </Box>
+            </div>
           </Card>
-      </VStack>
-    </Container>
+        </div>
+      </div>
 
-    {/* Log Trade Modal */}
-    <Modal
-      isOpen={showLogModal}
-      onClose={() => setShowLogModal(false)}
-      title={t('futu.log_trade_modal')}
-      size="xl"
-    >
-      <Box p={4}>
-        {selectedOptionForLog && (
-          <TradeForm
-            initialData={selectedOptionForLog}
-            onSubmit={onSubmitLog}
-            onCancel={() => setShowLogModal(false)}
-            isLoading={logLoading}
-          />
-        )}
-      </Box>
-    </Modal>
-  </Box>
+      {/* Log Trade Modal */}
+      <Modal
+        isOpen={showLogModal}
+        onClose={() => setShowLogModal(false)}
+        title={t('futu.log_trade_modal')}
+      >
+        <div className="p-4">
+          {selectedOptionForLog && (
+            <TradeForm
+              initialData={selectedOptionForLog}
+              onSubmit={onSubmitLog}
+              onCancel={() => setShowLogModal(false)}
+              isLoading={logLoading}
+            />
+          )}
+        </div>
+      </Modal>
+    </div>
   );
 }

@@ -1,33 +1,17 @@
 'use client';
 
-import { toaster } from '@/components/providers/ChakraProvider';
+import { toast as sonnerToast } from 'sonner';
 
-// Toast helper functions
+// Toast helper functions to match old API
 export const toast = {
   success: (message: string) =>
-    toaster.create({
-      title: message,
-      type: 'success',
-      duration: 5000,
-    }),
+    sonnerToast.success(message),
   error: (message: string) =>
-    toaster.create({
-      title: message,
-      type: 'error',
-      duration: 5000,
-    }),
+    sonnerToast.error(message),
   warning: (message: string) =>
-    toaster.create({
-      title: message,
-      type: 'warning',
-      duration: 5000,
-    }),
+    sonnerToast.warning(message),
   info: (message: string) =>
-    toaster.create({
-      title: message,
-      type: 'info',
-      duration: 5000,
-    }),
+    sonnerToast.info(message),
 };
 
 // Legacy exports for backward compatibility
@@ -39,18 +23,32 @@ export interface Toast {
 }
 
 export function addToast(toastData: Omit<Toast, 'id'>) {
-  toaster.create({
-    title: toastData.message,
-    type: toastData.type,
-    duration: toastData.duration ?? 5000,
-  });
+  const { message, type, duration } = toastData;
+  const options = { duration: duration ?? 5000 };
+  
+  switch (type) {
+    case 'success':
+      sonnerToast.success(message, options);
+      break;
+    case 'error':
+      sonnerToast.error(message, options);
+      break;
+    case 'warning':
+      sonnerToast.warning(message, options);
+      break;
+    case 'info':
+      sonnerToast.info(message, options);
+      break;
+    default:
+      sonnerToast(message, options);
+  }
 }
 
 export function removeToast(id: string) {
-  toaster.dismiss(id);
+  sonnerToast.dismiss(id);
 }
 
-// ToastContainer is no longer needed - handled by ChakraProvider
+// ToastContainer is no longer needed - handled by RootLayout adding Toaster
 export function ToastContainer() {
   return null;
 }

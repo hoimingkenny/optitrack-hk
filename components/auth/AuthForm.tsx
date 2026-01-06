@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, FormEvent } from 'react';
-import { Box, VStack, Text } from '@chakra-ui/react';
-import Button from '@/components/ui/Button';
+import { Button } from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import Card, { CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { useLanguage } from '@/components/providers/LanguageProvider';
 
 interface AuthFormProps {
@@ -51,37 +50,28 @@ export default function AuthForm({
   };
 
   return (
-    <Box w="full" maxW="md" mx="auto">
-      <Card padding="lg">
-        <CardHeader>
-          <CardTitle>
-            <Text textAlign="center" fontSize="2xl">
-              {mode === 'login' ? t('auth.sign_in') : t('auth.create_account')}
-            </Text>
+    <div className="w-full max-w-md mx-auto">
+      <Card className="p-6">
+        <CardHeader className="p-0 mb-6">
+          <CardTitle className="text-center text-2xl font-bold">
+            {mode === 'login' ? t('auth.sign_in') : t('auth.create_account')}
           </CardTitle>
-          <Text textAlign="center" color="fg.muted" fontSize="sm" mt={2}>
+          <p className="text-center text-muted-foreground text-sm mt-2">
             {mode === 'login' 
               ? t('auth.welcome_subtitle') 
               : t('auth.start_tracking')}
-          </Text>
+          </p>
         </CardHeader>
 
-        <CardContent>
+        <CardContent className="p-0">
           <form onSubmit={handleSubmit}>
-            <VStack gap={4}>
+            <div className="flex flex-col gap-4">
               {(error || validationError) && (
-                <Box
-                  w="full"
-                  p={3}
-                  bg="red.900/30"
-                  borderWidth="1px"
-                  borderColor="red.700"
-                  borderRadius="lg"
-                  color="red.400"
-                  fontSize="sm"
+                <div
+                  className="w-full p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm"
                 >
                   {error || validationError}
-                </Box>
+                </div>
               )}
 
               <Input
@@ -116,37 +106,26 @@ export default function AuthForm({
                 />
               )}
 
-              <Box w="full">
-                <Button type="submit" size="lg" isLoading={isLoading}>
-                  <Box w="full">{mode === 'login' ? t('auth.sign_in') : t('auth.create_account')}</Box>
+              <div className="w-full mt-2">
+                <Button type="submit" size="lg" disabled={isLoading} className="w-full">
+                  {mode === 'login' ? t('auth.sign_in') : t('auth.create_account')}
                 </Button>
-              </Box>
+              </div>
 
-              <Text textAlign="center" fontSize="sm" color="gray.400">
+              <p className="text-center text-sm text-muted-foreground">
                 {mode === 'login' ? t('auth.no_account') + ' ' : t('auth.has_account') + ' '}
                 <button
                   type="button"
                   onClick={onToggleMode}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: '#60a5fa',
-                    fontWeight: 500,
-                    fontSize: 'inherit',
-                    fontFamily: 'inherit',
-                    padding: 0,
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.color = '#93c5fd'}
-                  onMouseLeave={(e) => e.currentTarget.style.color = '#60a5fa'}
+                  className="text-blue-500 font-medium hover:text-blue-400 transition-colors bg-transparent border-none cursor-pointer p-0"
                 >
                   {mode === 'login' ? t('auth.sign_up_link') : t('auth.sign_in_link')}
                 </button>
-              </Text>
-            </VStack>
+              </p>
+            </div>
           </form>
         </CardContent>
       </Card>
-    </Box>
+    </div>
   );
 }

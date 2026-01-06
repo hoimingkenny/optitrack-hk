@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Box, Container, Flex, Text, VStack, Center, Spinner, SimpleGrid, Heading } from '@chakra-ui/react';
 import { User } from '@supabase/supabase-js';
 import { OptionWithSummary, CreateOptionWithTradeInput } from '@/db/schema';
 import { 
@@ -22,6 +21,8 @@ import Modal from '@/components/ui/Modal';
 import { toast } from '@/components/ui/Toast';
 import { formatHKD, formatPNL } from '@/utils/helpers/pnl-calculator';
 import { useLanguage } from '@/components/providers/LanguageProvider';
+import { Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function Home() {
   const { t, language } = useLanguage();
@@ -217,24 +218,24 @@ export default function Home() {
   // Loading state
   if (initialLoading) {
     return (
-      <Center minH="100vh">
-        <VStack>
-          <Spinner size="xl" color="brand.500" borderWidth="4px" />
-          <Text color="fg.muted">{t('common.loading')}</Text>
-        </VStack>
-      </Center>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center gap-2">
+          <Loader2 className="w-10 h-10 animate-spin text-primary" />
+          <p className="text-muted-foreground">{t('common.loading')}</p>
+        </div>
+      </div>
     );
   }
 
   // Auth screen
   if (!user) {
     return (
-      <Center minH="100vh" p={4}>
-        <Box w="full" maxW="md">
-          <VStack textAlign="center" mb={8}>
-            <Text fontSize="3xl" fontWeight="bold" color="fg.default">📈 OptiTrack HK</Text>
-            <Text color="fg.muted">{t('page.hk_tracker_subtitle')}</Text>
-          </VStack>
+      <div className="flex items-center justify-center min-h-screen p-4">
+        <div className="w-full max-w-md">
+          <div className="text-center mb-8 space-y-2">
+            <h1 className="text-3xl font-bold text-foreground">📈 OptiTrack HK</h1>
+            <p className="text-muted-foreground">{t('page.hk_tracker_subtitle')}</p>
+          </div>
           <AuthForm
             mode={authMode}
             onSubmit={handleAuth}
@@ -242,35 +243,35 @@ export default function Home() {
             isLoading={authLoading}
             error={authError}
           />
-        </Box>
-      </Center>
+        </div>
+      </div>
     );
   }
 
   // Dashboard
   return (
-    <Box minH="100vh" w="100%">
+    <div className="min-h-screen w-full bg-background">
       <DashboardNav onSignOut={handleSignOut} userEmail={user.email} />
       
-      <Box w="100%">
-        <Container maxW="7xl" mx="auto" px={{ base: 4, sm: 6, lg: 8 }} py={6}>
+      <main className="w-full">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {/* Header */}
-          <Flex alignItems="center" justifyContent="space-between" mb={6}>
-            <Box>
-              <Text fontSize="2xl" fontWeight="bold" color="fg.default">{t('page.dashboard_title')}</Text>
-              <Text color="fg.muted" fontSize="sm">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">{t('page.dashboard_title')}</h1>
+              <p className="text-sm text-muted-foreground">
                 {new Date().toLocaleDateString(language === 'zh' ? 'zh-HK' : 'en-HK', { 
                   weekday: 'long', 
                   year: 'numeric', 
                   month: 'long', 
                   day: 'numeric' 
                 })}
-              </Text>
-            </Box>
+              </p>
+            </div>
             <Button onClick={() => setShowNewTradeForm(true)}>
               {t('page.new_option_btn')}
             </Button>
-          </Flex>
+          </div>
 
           {/* New Trade Modal */}
           <Modal
@@ -288,109 +289,82 @@ export default function Home() {
 
           {/* Summary Cards */}
           {optionsLoading ? (
-            <Center py={12}>
-              <VStack gap={2}>
-                <Spinner size="lg" color="brand.500" borderWidth="4px" />
-                <Text color="fg.muted">{t('page.loading_options')}</Text>
-              </VStack>
-            </Center>
+            <div className="flex flex-col items-center justify-center py-12 gap-2">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <p className="text-muted-foreground">{t('page.loading_options')}</p>
+            </div>
           ) : options.length > 0 ? (
-            <Box mb={6}>
-              <Flex gap={4} flexWrap="wrap" mb={6}>
+            <div className="mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 {/* Open Positions */}
-                <Box 
-                  flex="1" 
-                  minW="200px"
-                  bg="bg.surface" 
-                  p={6} 
-                  borderRadius="xl" 
-                  borderWidth="1px" 
-                  borderColor="border.default"
-                >
-                  <Text fontSize="sm" color="fg.muted" mb={2}>{t('dashboard.open_positions')}</Text>
-                  <Text fontSize="3xl" fontWeight="bold" color="blue.400">
+                <div className="bg-card p-6 rounded-xl border border-border shadow-sm">
+                  <p className="text-sm text-muted-foreground mb-2">{t('dashboard.open_positions')}</p>
+                  <p className="text-3xl font-bold text-blue-500">
                     {openOptionsCount}
-                  </Text>
-                </Box>
+                  </p>
+                </div>
 
                 {/* Total PNL */}
-                <Box 
-                  flex="1" 
-                  minW="200px"
-                  bg="bg.surface" 
-                  p={6} 
-                  borderRadius="xl" 
-                  borderWidth="1px" 
-                  borderColor="border.default"
-                >
-                  <Text fontSize="sm" color="fg.muted" mb={2}>{t('dashboard.total_pnl')}</Text>
-                  <Text 
-                    fontSize="3xl" 
-                    fontWeight="bold" 
-                    color={totalPNL > 0 ? 'green.400' : totalPNL < 0 ? 'red.400' : 'fg.default'}
+                <div className="bg-card p-6 rounded-xl border border-border shadow-sm">
+                  <p className="text-sm text-muted-foreground mb-2">{t('dashboard.total_pnl')}</p>
+                  <p 
+                    className={cn(
+                      "text-3xl font-bold",
+                      totalPNL > 0 ? "text-green-500" : totalPNL < 0 ? "text-red-500" : "text-foreground"
+                    )}
                   >
                     {formatPNL(totalPNL)}
-                  </Text>
-                </Box>
+                  </p>
+                </div>
 
                 {/* Total Covering Cash */}
-                <Box 
-                  flex="1" 
-                  minW="200px"
-                  bg="bg.surface" 
-                  p={6} 
-                  borderRadius="xl" 
-                  borderWidth="1px" 
-                  borderColor="border.default"
-                >
-                  <Text fontSize="sm" color="fg.muted" mb={2}>{t('dashboard.total_covering_cash')}</Text>
-                  <Text fontSize="3xl" fontWeight="bold" color="#D73535">
+                <div className="bg-card p-6 rounded-xl border border-border shadow-sm">
+                  <p className="text-sm text-muted-foreground mb-2">{t('dashboard.total_covering_cash')}</p>
+                  <p className="text-3xl font-bold text-red-600">
                     {formatHKD(totalCoveringCash)}
-                  </Text>
-                </Box>
-              </Flex>
+                  </p>
+                </div>
+              </div>
 
               {/* Heatmap */}
               <OptionHeatmap options={options} />
 
               {/* Exposure Summaries */}
-              <Box mt={8}>
-                <Flex justifyContent="space-between" alignItems="flex-end" mb={4}>
-                  <VStack align="start" gap={1}>
-                    <Heading size="md" color="fg.default">{t('page.exposure_analysis')}</Heading>
-                    <Text fontSize="xs" color="fg.muted">{t('page.concentrated_risk')}</Text>
-                  </VStack>
-                  <Box w="240px">
-                    <Text fontSize="xs" fontWeight="medium" color="fg.muted" mb={1} textAlign="right">
+              <div className="mt-8">
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-4">
+                  <div className="space-y-1">
+                    <h2 className="text-xl font-bold text-foreground">{t('page.exposure_analysis')}</h2>
+                    <p className="text-xs text-muted-foreground">{t('page.concentrated_risk')}</p>
+                  </div>
+                  <div className="w-full sm:w-60">
+                    <p className="text-xs font-medium text-muted-foreground mb-1 sm:text-right">
                       {t('page.risk_horizon')}
-                    </Text>
+                    </p>
                     <Select
                       options={TIME_RANGE_OPTIONS}
                       value={exposureTimeRange}
                       onChange={(e) => setExposureTimeRange(e.target.value)}
                     />
-                  </Box>
-                </Flex>
-                <SimpleGrid columns={{ base: 1, lg: 2 }} gap={6}>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <SellPutExposure options={options} timeRange={exposureTimeRange} />
                   <SellCallExposure options={options} timeRange={exposureTimeRange} />
-                </SimpleGrid>
-              </Box>
-            </Box>
+                </div>
+              </div>
+            </div>
           ) : (
-            <Center py={12} bg="bg.surface" borderRadius="xl" borderWidth="1px" borderColor="border.default">
-              <VStack gap={4}>
-                <Text color="fg.muted" mb={0}>
-                  {t('page.no_options_empty')}
-                </Text>
-                <Button onClick={() => setShowNewTradeForm(true)}>
-                  {t('page.create_first_btn')}
-                </Button>
-              </VStack>
-            </Center>
+            <div className="flex flex-col items-center justify-center py-12 bg-card rounded-xl border border-border border-dashed gap-4">
+              <p className="text-muted-foreground">
+                {t('page.no_options_empty')}
+              </p>
+              <Button onClick={() => setShowNewTradeForm(true)}>
+                {t('page.create_first_btn')}
+              </Button>
+            </div>
           )}
-        </Container>
-      </Box>
-    </Box>
+        </div>
+      </main>
+    </div>
   );
 }

@@ -1,14 +1,15 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { Table, Box, HStack, Text, Flex } from '@chakra-ui/react';
 import { OptionWithSummary } from '@/db/schema';
 import { DirectionBadge, StatusBadge } from '@/components/ui/Badge';
 import { formatPNL } from '@/utils/helpers/pnl-calculator';
 import { formatDateToYYYYMMDD } from '@/utils/helpers/date-helpers';
 import { useRouter } from 'next/navigation';
-import Button from '@/components/ui/Button';
+import { Button } from '@/components/ui/Button';
 import { useLanguage } from '@/components/providers/LanguageProvider';
+import { ChevronUp, ChevronDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface OptionsTableProps {
   options: OptionWithSummary[];
@@ -64,8 +65,6 @@ export default function OptionsTable({ options }: OptionsTableProps) {
           comparison = a.direction.localeCompare(b.direction);
           break;
         case 'days':
-          const now = new Date();
-          now.setHours(0, 0, 0, 0);
           const expiryA = new Date(a.expiry_date);
           const expiryB = new Date(b.expiry_date);
           comparison = expiryA.getTime() - expiryB.getTime();
@@ -98,17 +97,11 @@ export default function OptionsTable({ options }: OptionsTableProps) {
   };
 
   return (
-    <Box>
-      <Box 
-        overflowX="auto" 
-        bg="bg.surface" 
-        borderRadius="xl" 
-        borderWidth="1px" 
-        borderColor="border.default"
-      >
-        <Table.Root size="sm" variant="outline">
-          <Table.Header>
-            <Table.Row height="2.75rem">
+    <div className="w-full">
+      <div className="overflow-x-auto bg-card rounded-xl border border-border">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="h-11 bg-muted/50 border-b border-border">
               <SortableHeader 
                 label={t('table.option_name')}
                 field="name" 
@@ -157,11 +150,11 @@ export default function OptionsTable({ options }: OptionsTableProps) {
                 onSort={handleSort} 
                 align="center"
               />
-            </Table.Row>
-          </Table.Header>
-          <Table.Body>
+            </tr>
+          </thead>
+          <tbody>
             {paginatedOptions.map((option) => {
-              const pnlColor = option.total_pnl > 0 ? 'green.400' : option.total_pnl < 0 ? 'red.400' : 'fg.muted';
+              const pnlColor = option.total_pnl > 0 ? 'text-green-500' : option.total_pnl < 0 ? 'text-red-500' : 'text-muted-foreground';
               const strikePrice = typeof option.strike_price === 'string' ? parseFloat(option.strike_price) : option.strike_price;
               const optionName = `${option.stock_symbol} ${formatDateToYYYYMMDD(option.expiry_date)} ${strikePrice.toFixed(2)} ${option.option_type}`;
               
@@ -173,81 +166,78 @@ export default function OptionsTable({ options }: OptionsTableProps) {
               const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
               
               return (
-                <Table.Row 
+                <tr 
                   key={option.id}
-                  height="2.75rem"
+                  className="h-11 border-b border-border cursor-pointer hover:bg-muted/50 transition-colors"
                   onClick={() => handleRowClick(option.id)}
-                  cursor="pointer"
-                  _hover={{ bg: 'bg.subtle' }}
-                  transition="background 0.2s"
                 >
-                  <Table.Cell textAlign="left" px={4} fontWeight="medium" color="fg.default">
+                  <td className="px-4 text-left font-medium text-foreground">
                     {optionName}
-                  </Table.Cell>
-                  <Table.Cell textAlign="center" px={4}>
+                  </td>
+                  <td className="px-4 text-center">
                     <DirectionBadge direction={option.direction} />
-                  </Table.Cell>
-                  <Table.Cell textAlign="center" px={4} color="fg.muted">
+                  </td>
+                  <td className="px-4 text-center text-muted-foreground">
                     {option.status === 'Open' ? `${daysLeft}d` : '-'}
-                  </Table.Cell>
-                  <Table.Cell textAlign="center" px={4} color="fg.default">
+                  </td>
+                  <td className="px-4 text-center text-foreground">
                     {option.net_contracts}
-                  </Table.Cell>
-                  <Table.Cell textAlign="center" px={4} fontWeight="medium" color={pnlColor}>
+                  </td>
+                  <td className={cn("px-4 text-center font-medium", pnlColor)}>
                     {formatPNL(option.total_pnl)}
-                  </Table.Cell>
-                  <Table.Cell textAlign="center" px={4}>
+                  </td>
+                  <td className="px-4 text-center">
                     <StatusBadge status={option.status} />
-                  </Table.Cell>
-                </Table.Row>
+                  </td>
+                </tr>
               );
             })}
             {paginatedOptions.length === 0 && (
-              <Table.Row>
-                <Table.Cell colSpan={6} textAlign="center" py={4} color="fg.muted">
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
                   {t('table.no_options')}
-                </Table.Cell>
-              </Table.Row>
+                </td>
+              </tr>
             )}
-          </Table.Body>
-        </Table.Root>
-      </Box>
+          </tbody>
+        </table>
+      </div>
 
       {/* Pagination Controls */}
       {totalPages > 1 && (
-        <Flex justifyContent="space-between" alignItems="center" mt={4} px={2}>
-          <Text fontSize="sm" color="fg.muted">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4 px-2">
+          <p className="text-sm text-muted-foreground">
             {t('table.showing_range')
               .replace('{start}', ((currentPage - 1) * PAGE_SIZE + 1).toString())
               .replace('{end}', Math.min(currentPage * PAGE_SIZE, sortedOptions.length).toString())
               .replace('{total}', sortedOptions.length.toString())}
-          </Text>
-          <HStack gap={2}>
+          </p>
+          <div className="flex items-center gap-4">
             <Button 
-              variant="secondary" 
+              variant="outline" 
               size="sm" 
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
             >
               {t('table.previous')}
             </Button>
-            <Text fontSize="sm" fontWeight="medium">
+            <p className="text-sm font-medium">
               {t('table.page_info')
                 .replace('{current}', currentPage.toString())
                 .replace('{total}', totalPages.toString())}
-            </Text>
+            </p>
             <Button 
-              variant="secondary" 
+              variant="outline" 
               size="sm" 
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
             >
               {t('table.next')}
             </Button>
-          </HStack>
-        </Flex>
+          </div>
+        </div>
       )}
-    </Box>
+    </div>
   );
 }
 
@@ -262,36 +252,22 @@ interface SortableHeaderProps {
 
 function SortableHeader({ label, field, currentSort, sortOrder, onSort, align = 'left' }: SortableHeaderProps) {
   return (
-    <Table.ColumnHeader 
-      textAlign={align} 
-      px={4} 
-      cursor="pointer" 
+    <th 
+      className={cn(
+        "px-4 font-semibold text-muted-foreground cursor-pointer hover:bg-muted/80 transition-colors",
+        align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'
+      )}
       onClick={() => onSort(field)}
-      _hover={{ bg: 'bg.muted' }}
     >
-      <HStack gap={1} justifyContent={align === 'center' ? 'center' : align === 'right' ? 'flex-end' : 'flex-start'}>
-        <Text>{label}</Text>
+      <div className={cn(
+        "flex items-center gap-1",
+        align === 'center' ? 'justify-center' : align === 'right' ? 'justify-end' : 'justify-start'
+      )}>
+        <span>{label}</span>
         {currentSort === field && (
-          sortOrder === 'asc' ? <ChevronUpIcon className="w-3 h-3" /> : <ChevronDownIcon className="w-3 h-3" />
+          sortOrder === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
         )}
-      </HStack>
-    </Table.ColumnHeader>
-  );
-}
-
-// Icons
-function ChevronUpIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-    </svg>
-  );
-}
-
-function ChevronDownIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-    </svg>
+      </div>
+    </th>
   );
 }

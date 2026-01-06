@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, FormEvent, useEffect } from 'react';
-import { Box, SimpleGrid, VStack, Text, Flex } from '@chakra-ui/react';
 import { TradeDirection, OptionType } from '@/db/schema';
 import { validateTradeInput, sanitizeStockSymbol, parseNumberInput } from '@/utils/helpers/validators';
 import { calculateTotalPremium, DEFAULT_SHARES_PER_CONTRACT } from '@/utils/helpers/pnl-calculator';
@@ -136,10 +135,6 @@ export default function TradeForm({
     const fetchPremium = async () => {
       if (!formData.futu_code) return;
       
-      // If premium is already set (manually or from previous), maybe don't overwrite unless it's a new selection?
-      // But we want to auto-fill "Current Premium".
-      // We can check if it's a "fresh" selection.
-      // For now, just fetch.
       try {
         const res = await fetch(`/api/futu/quote?symbol=${formData.futu_code}`);
         if (res.ok) {
@@ -247,21 +242,19 @@ export default function TradeForm({
       await onSubmit(input);
     } catch (err) {
       console.error('Submission error:', err);
-      // Errors should be handled by the parent via toast, 
-      // but we log it here for debugging.
     }
   };
 
   return (
     <form onSubmit={handleSubmit}>
-      <VStack gap={4} align="stretch">
+      <div className="flex flex-col gap-4 items-stretch">
         {/* Toggle for Expired Option */}
-        <Box mb={2}>
+        <div className="mb-2">
           <Switch 
             label={t('trade.expired_option')} 
             checked={isExpired}
-            onCheckedChange={(details) => {
-              setIsExpired(details.checked);
+            onCheckedChange={(checked) => {
+              setIsExpired(checked);
               // Reset some fields when toggling
               setFormData(prev => ({
                 ...prev,
@@ -272,10 +265,10 @@ export default function TradeForm({
               setErrors({});
             }}
           />
-        </Box>
+        </div>
 
         {/* Row 1: Stock Symbol, Option Type */}
-        <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} w="full">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
           <StockSelect
             label={t('trade.stock_symbol')}
             value={formData.stock_symbol}
@@ -305,10 +298,10 @@ export default function TradeForm({
             error={errors.option_type}
             required
           />
-        </SimpleGrid>
+        </div>
 
         {/* Row 2: Options of the stock (Date and Strike) */}
-        <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} w="full">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
           {isExpired ? (
             <Input
               label={t('trade.expiration_date')}
@@ -382,10 +375,10 @@ export default function TradeForm({
               disabled={!formData.expiry_date || !formData.option_type || loadingOptions}
             />
           )}
-        </SimpleGrid>
+        </div>
 
         {/* Row 3: Direction, Trade Date */}
-        <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} w="full">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
           <Select
             label={t('trade.direction')}
             options={DIRECTION_OPTIONS}
@@ -415,10 +408,10 @@ export default function TradeForm({
             error={errors.trade_date}
             required
           />
-        </SimpleGrid>
+        </div>
 
         {/* Row 4: Premium, Contract */}
-        <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} w="full">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
           <Input
             label={t('trade.premium_label')}
             type="number"
@@ -441,25 +434,25 @@ export default function TradeForm({
             error={errors.contracts}
             required
           />
-        </SimpleGrid>
+        </div>
 
         {/* Total Premium Preview */}
         {totalPremium > 0 && (
-          <Box w="full" p={3} bg="bg.muted" borderRadius="lg" borderWidth="1px" borderColor="border.default">
-            <Flex justifyContent="space-between" alignItems="center">
-              <Text fontSize="sm" color="fg.muted">{t('trade.total_premium')}</Text>
-              <Text fontSize="lg" fontWeight="semibold" color="green.400">
+          <div className="w-full p-3 bg-muted rounded-lg border border-border">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-muted-foreground">{t('trade.total_premium')}</span>
+              <span className="text-lg font-semibold text-green-500">
                 HKD {totalPremium.toLocaleString('en-HK', { minimumFractionDigits: 2 })}
-              </Text>
-            </Flex>
-            <Text fontSize="xs" color="fg.subtle" mt={1}>
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
               {premium} × {contracts} {t('trade.contracts_label').toLowerCase()} × {formData.shares_per_contract} {t('exposure.shares_unit').toLowerCase()}
-            </Text>
-          </Box>
+            </p>
+          </div>
         )}
 
         {/* Row 5: Fee and Margin */}
-        <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} w="full">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
           <Input
             label={t('trade.fee_label')}
             type="number"
@@ -481,19 +474,19 @@ export default function TradeForm({
             onChange={(e) => handleChange('margin_percent', e.target.value)}
             error={errors.margin_percent}
           />
-        </SimpleGrid>
+        </div>
 
-        <Flex justifyContent="flex-end" gap={3} mt={4}>
+        <div className="flex justify-end gap-3 mt-4">
           {onCancel && (
-            <Button type="button" variant="secondary" onClick={onCancel} disabled={isLoading}>
+            <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
               {t('common.cancel')}
             </Button>
           )}
           <Button type="submit" isLoading={isLoading}>
             {initialData ? t('trade.save_changes') : t('trade.open_trade')}
           </Button>
-        </Flex>
-      </VStack>
+        </div>
+      </div>
     </form>
   );
 }

@@ -1,82 +1,80 @@
-'use client';
-
-import { Box, Field } from '@chakra-ui/react';
-import { forwardRef } from 'react';
+import * as React from "react"
+import { cn } from "@/lib/utils"
 
 interface SelectOption {
   value: string;
   label: string;
 }
 
-interface SelectProps {
+export interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
   label?: string;
   error?: string;
   options: SelectOption[];
   placeholder?: string;
-  id?: string;
-  required?: boolean;
-  value?: string;
-  onChange?: (e: React.ChangeEvent<HTMLSelectElement>) => void;
-  disabled?: boolean;
-  name?: string;
 }
 
-const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ label, error, options, placeholder, id, required, value, onChange, disabled, name }, ref) => {
-    const selectId = id || label?.toLowerCase().replace(/\s/g, '-');
+const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
+  ({ className, label, error, options, placeholder, id, required, ...props }, ref) => {
+    const selectId = id || (label ? label.toLowerCase().replace(/\s/g, '-') : undefined);
 
     return (
-      <Field.Root invalid={!!error} required={required} w="full">
+      <div className="w-full space-y-1.5">
         {label && (
-          <Field.Label htmlFor={selectId} fontSize="sm" fontWeight="medium" color="fg.muted" mb={1.5}>
+          <label
+            htmlFor={selectId}
+            className="text-sm font-medium text-muted-foreground"
+          >
             {label}
-            {required && <Box as="span" color="red.400" ml={1}>*</Box>}
-          </Field.Label>
+            {required && <span className="ml-1 text-destructive">*</span>}
+          </label>
         )}
-        <select
-          ref={ref}
-          id={selectId}
-          name={name}
-          value={value}
-          onChange={onChange}
-          disabled={disabled}
-          aria-invalid={error ? 'true' : 'false'}
-          aria-describedby={error ? `${selectId}-error` : undefined}
-          style={{
-            width: '100%',
-            padding: '0.5rem 0.75rem',
-            backgroundColor: 'var(--chakra-colors-bg-surface)',
-            borderWidth: '1px',
-            borderStyle: 'solid',
-            borderColor: error ? '#ef4444' : 'var(--chakra-colors-border-default)',
-            color: 'var(--chakra-colors-fg-default)',
-            borderRadius: '0.5rem',
-            outline: 'none',
-            cursor: disabled ? 'not-allowed' : 'pointer',
-            opacity: disabled ? 0.5 : 1,
-          }}
-        >
-          {placeholder && (
-            <option value="" disabled>
-              {placeholder}
-            </option>
-          )}
-          {options.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        <div className="relative">
+          <select
+            className={cn(
+              "flex h-9 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 appearance-none",
+              error && "border-destructive focus:ring-destructive",
+              className
+            )}
+            id={selectId}
+            ref={ref}
+            {...props}
+          >
+            {placeholder && (
+              <option value="" disabled>
+                {placeholder}
+              </option>
+            )}
+            {options.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-muted-foreground">
+            <svg
+              className="h-4 w-4"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
+            </svg>
+          </div>
+        </div>
         {error && (
-          <Field.ErrorText id={`${selectId}-error`} mt={1.5} fontSize="sm" color="red.400">
-            {error}
-          </Field.ErrorText>
+          <p className="text-sm text-destructive">{error}</p>
         )}
-      </Field.Root>
-    );
+      </div>
+    )
   }
-);
+)
+Select.displayName = "Select"
 
-Select.displayName = 'Select';
-
-export default Select;
+export { Select }
+export default Select

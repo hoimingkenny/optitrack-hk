@@ -1,79 +1,92 @@
-'use client';
+import * as React from "react"
 
-import { Box } from '@chakra-ui/react';
-import { ReactNode } from 'react';
+import { cn } from "@/lib/utils"
 
-interface CardProps {
-  children: ReactNode;
-  className?: string;
-  padding?: 'none' | 'sm' | 'md' | 'lg';
-}
-
-const paddingMap = {
-  none: 0,
-  sm: 3,
-  md: 4,
-  lg: 6,
-};
-
-export default function Card({ children, padding = 'md' }: CardProps) {
+function Card({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    <Box
-      bg="bg.surface"
-      borderWidth="1px"
-      borderColor="border.default"
-      borderRadius="xl"
-      p={paddingMap[padding]}
-    >
-      {children}
-    </Box>
-  );
+    <div
+      data-slot="card"
+      className={cn(
+        "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm",
+        className
+      )}
+      {...props}
+    />
+  )
 }
 
-interface CardHeaderProps {
-  children: ReactNode;
-  className?: string;
-}
-
-export function CardHeader({ children }: CardHeaderProps) {
+function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    <Box borderBottomWidth="1px" borderColor="border.default" pb={4} mb={4}>
-      {children}
-    </Box>
-  );
+    <div
+      data-slot="card-header"
+      className={cn(
+        "@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-2 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6",
+        className
+      )}
+      {...props}
+    />
+  )
 }
 
-interface CardTitleProps {
-  children: ReactNode;
-  className?: string;
-}
-
-export function CardTitle({ children }: CardTitleProps) {
+function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    <Box as="h3" fontSize="lg" fontWeight="semibold" color="fg.default">
-      {children}
-    </Box>
-  );
+    <div
+      data-slot="card-title"
+      className={cn("leading-none font-semibold", className)}
+      {...props}
+    />
+  )
 }
 
-interface CardContentProps {
-  children: ReactNode;
-  className?: string;
-}
-
-export function CardContent({ children }: CardContentProps) {
-  return <Box>{children}</Box>;
-}
-
-interface CardFooterProps {
-  children: ReactNode;
-  className?: string;
-}
-
-export function CardFooter({ children }: CardFooterProps) {
+function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
   return (
-    <Box borderTopWidth="1px" borderColor="border.default" pt={4} mt={4}>
-      {children}
-    </Box>
-  );
+    <div
+      data-slot="card-description"
+      className={cn("text-muted-foreground text-sm", className)}
+      {...props}
+    />
+  )
+}
+
+function CardAction({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-action"
+      className={cn(
+        "col-start-2 row-span-2 row-start-1 self-start justify-self-end",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
+function CardContent({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-content"
+      className={cn("px-6", className)}
+      {...props}
+    />
+  )
+}
+
+function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="card-footer"
+      className={cn("flex items-center px-6 [.border-t]:pt-6", className)}
+      {...props}
+    />
+  )
+}
+
+export {
+  Card,
+  CardHeader,
+  CardFooter,
+  CardTitle,
+  CardAction,
+  CardDescription,
+  CardContent,
 }

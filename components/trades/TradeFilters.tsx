@@ -1,23 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Box, Flex, Text, VStack } from '@chakra-ui/react';
 import { OptionFilters } from '@/db/schema';
 import Select from '../ui/Select';
-import Input from '../ui/Input';
-import Button from '@/components/ui/Button';
+import { Button } from '@/components/ui/Button';
 import { useLanguage } from '@/components/providers/LanguageProvider';
+import { cn } from '@/lib/utils';
 
 interface TradeFiltersProps {
   filters: OptionFilters;
   onFilterChange: (filters: OptionFilters) => void;
   stockSymbols: string[];
 }
-
-// Remove old constant definitions since they are now defined inside the component
-// const STATUS_OPTIONS = ...
-// const DIRECTION_OPTIONS = ...
-// const OPTION_TYPE_OPTIONS = ...
 
 export default function TradeFiltersComponent({ 
   filters, 
@@ -63,66 +56,58 @@ export default function TradeFiltersComponent({
     onFilterChange({});
   };
 
-  const hasActiveFilters = filters.stock_symbol || filters.status || filters.direction || filters.option_type;
+  const hasActiveFilters = !!(filters.stock_symbol || filters.status || filters.direction || filters.option_type);
 
   return (
-    <Flex
-      flexWrap="wrap"
-      alignItems="flex-end"
-      gap={3}
-      p={4}
-      bg="bg.surface"
-      borderRadius="lg"
-      borderWidth="1px"
-      borderColor="border.default"
-    >
-      <Box flex="1" minW="150px">
+    <div className="flex flex-wrap items-end gap-3 p-4 bg-card rounded-lg border border-border">
+      <div className="flex-1 min-w-[150px]">
         <Select
           label={t('filters.stock')}
           options={symbolOptions}
           value={filters.stock_symbol || ''}
           onChange={(e) => handleChange('stock_symbol', e.target.value)}
         />
-      </Box>
+      </div>
       
-      <Box flex="1" minW="120px">
+      <div className="flex-1 min-w-[120px]">
         <Select
           label={t('filters.status')}
           options={STATUS_OPTIONS}
           value={filters.status || 'ALL'}
           onChange={(e) => handleChange('status', e.target.value)}
         />
-      </Box>
+      </div>
       
-      <Box flex="1" minW="120px">
+      <div className="flex-1 min-w-[120px]">
         <Select
           label={t('filters.direction')}
           options={DIRECTION_OPTIONS}
           value={filters.direction || 'ALL'}
           onChange={(e) => handleChange('direction', e.target.value)}
         />
-      </Box>
+      </div>
 
-      <Box flex="1" minW="120px">
+      <div className="flex-1 min-w-[120px]">
         <Select
           label={t('filters.type')}
           options={OPTION_TYPE_OPTIONS}
           value={filters.option_type || 'ALL'}
           onChange={(e) => handleChange('option_type', e.target.value)}
         />
-      </Box>
+      </div>
 
       {hasActiveFilters && (
-        <Box mb={0.5}>
+        <div className="mb-0.5">
           <Button 
             variant="ghost" 
             size="sm" 
             onClick={handleClearFilters}
+            className="text-muted-foreground hover:text-foreground"
           >
             {t('filters.clear')}
           </Button>
-        </Box>
+        </div>
       )}
-    </Flex>
+    </div>
   );
 }

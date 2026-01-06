@@ -3,9 +3,9 @@
 ## ✅ Completed - Full MVP Implementation
 
 ### 🔄 Recently Completed (Archived)
+- **Tailwind CSS & Shadcn UI Migration**: Replaced Chakra UI with Tailwind CSS and Shadcn UI for all core components.
 - **Database Refactor**: Replaced `stock_symbol` with `stock_id` foreign key referencing `stocks` table.
 - **Drizzle ORM Integration**: Migrated from manual Supabase calls to Drizzle ORM.
-- **Chakra UI v3 Migration**: Updated UI components to Chakra UI v3.
 - **Option-Centric Refactor**: Restructured database to group trades under options.
 
 ### Core Features Implemented
@@ -69,20 +69,19 @@ Daily auto-check on app load with toast notifications.
 
 | Component | Location | Description |
 |-----------|----------|-------------|
-| `Button` | `components/ui/Button.tsx` | Primary, secondary, danger, ghost variants |
-| `Input` | `components/ui/Input.tsx` | Form input with label, error, helper text |
-| `Select` | `components/ui/Select.tsx` | Dropdown with options |
-| `Badge` | `components/ui/Badge.tsx` | Status and direction badges |
-| `Card` | `components/ui/Card.tsx` | Container with header, content, footer |
-| `Modal` | `components/ui/Modal.tsx` | Modal dialog with confirm variant |
-| `Toast` | `components/ui/Toast.tsx` | Notification system |
-| `AuthForm` | `components/auth/AuthForm.tsx` | Login/signup form |
-| `DashboardNav` | `components/layout/DashboardNav.tsx` | Navigation header |
-| `TradeForm` | `components/trades/TradeForm.tsx` | New trade entry form |
-| `TradeCard` | `components/trades/TradeCard.tsx` | Trade display card |
-| `TradeFilters` | `components/trades/TradeFilters.tsx` | Filter controls |
-| `CloseTradeModal` | `components/trades/CloseTradeModal.tsx` | Close position modal |
-| `PNLSummary` | `components/trades/PNLSummary.tsx` | Portfolio statistics |
+| `Button` | `components/ui/Button.tsx` | Primary, outline, ghost variants (Shadcn) |
+| `Input` | `components/ui/Input.tsx` | Form input with label, error, helper text (Shadcn) |
+| `Select` | `components/ui/Select.tsx` | Dropdown with options (Shadcn) |
+| `Badge` | `components/ui/Badge.tsx` | Status and direction badges (Shadcn) |
+| `Card` | `components/ui/Card.tsx` | Container with header, content, footer (Shadcn) |
+| `Modal` | `components/ui/Modal.tsx` | Modal dialog with confirm variant (Shadcn/Radix) |
+| `Toast` | `components/ui/sonner.tsx` | Notification system (Sonner) |
+| `AuthForm` | `components/auth/AuthForm.tsx` | Login/signup form (Tailwind/Shadcn) |
+| `DashboardNav` | `components/layout/DashboardNav.tsx` | Navigation header (Tailwind) |
+| `TradeForm` | `components/trades/TradeForm.tsx` | New trade entry form (Tailwind/Shadcn) |
+| `OptionsTable` | `components/options/OptionsTable.tsx` | Option chain display (Tailwind/Shadcn) |
+| `TradeFilters` | `components/trades/TradeFilters.tsx` | Filter controls (Tailwind/Shadcn) |
+| `OptionHeatmap` | `components/dashboard/OptionHeatmap.tsx` | Activity visualization (Tailwind) |
 
 ### Utility Functions
 

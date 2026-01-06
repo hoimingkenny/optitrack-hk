@@ -1,110 +1,67 @@
 'use client';
 
+import * as React from 'react';
 import {
-  DialogRoot,
+  Dialog,
   DialogContent,
   DialogHeader,
-  DialogBody,
-  DialogFooter,
   DialogTitle,
-  DialogCloseTrigger,
-  DialogBackdrop,
-  Portal,
-  Box,
-} from '@chakra-ui/react';
-import { ReactNode } from 'react';
+  DialogFooter,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import Button from './Button';
+import { cn } from '@/lib/utils';
 
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
-  children: ReactNode;
-  footer?: ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | 'full';
+  className?: string;
 }
 
-const sizeMap = {
-  sm: 'sm',
-  md: 'md',
-  lg: 'lg',
-  xl: 'xl',
-} as const;
+const sizeClasses = {
+  sm: 'max-w-sm',
+  md: 'max-w-md',
+  lg: 'max-w-lg',
+  xl: 'max-w-xl',
+  '2xl': 'max-w-2xl',
+  '3xl': 'max-w-3xl',
+  '4xl': 'max-w-4xl',
+  '5xl': 'max-w-5xl',
+  full: 'max-w-full',
+};
 
-export default function Modal({ isOpen, onClose, title, children, footer, size = 'md' }: ModalProps) {
+export default function Modal({ 
+  isOpen, 
+  onClose, 
+  title, 
+  children, 
+  footer, 
+  size = 'md',
+  className 
+}: ModalProps) {
   return (
-    <DialogRoot
-      open={isOpen}
-      onOpenChange={(details) => !details.open && onClose()}
-      size={sizeMap[size]}
-    >
-      <Portal>
-        <DialogBackdrop bg="blackAlpha.700" backdropFilter="blur(4px)" zIndex="9998" />
-        <Box
-          position="fixed"
-          top="0"
-          left="0"
-          width="100vw"
-          height="100vh"
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-          zIndex="9999"
-          pointerEvents="none"
-        >
-          <DialogContent
-            bg="bg.surface"
-            borderWidth="1px"
-            borderColor="border.default"
-            borderRadius="xl"
-            shadow="2xl"
-            pointerEvents="auto"
-            maxW={size === 'sm' ? 'sm' : size === 'md' ? 'md' : size === 'lg' ? 'lg' : 'xl'}
-            w="full"
-          >
-            <DialogHeader
-              display="flex"
-              alignItems="center"
-              justifyContent="space-between"
-              p={4}
-              borderBottomWidth="1px"
-              borderColor="border.default"
-            >
-              <DialogTitle fontSize="lg" fontWeight="semibold" color="fg.default">
-                {title}
-              </DialogTitle>
-              <DialogCloseTrigger
-                position="relative"
-                top="0"
-                right="0"
-                p={1}
-                color="fg.muted"
-                _hover={{ color: 'fg.default', bg: 'bg.muted' }}
-                borderRadius="lg"
-              />
-            </DialogHeader>
-
-            <DialogBody p={4} maxH="70vh" overflowY="auto">
-              {children}
-            </DialogBody>
-
-            {footer && (
-              <DialogFooter
-                display="flex"
-                alignItems="center"
-                justifyContent="flex-end"
-                gap={3}
-                p={4}
-                borderTopWidth="1px"
-                borderColor="border.default"
-              >
-                {footer}
-              </DialogFooter>
-            )}
-          </DialogContent>
-        </Box>
-      </Portal>
-    </DialogRoot>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className={cn(sizeClasses[size as keyof typeof sizeClasses] || sizeClasses.md, className)}>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription className="sr-only">
+            {title}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-4 max-h-[70vh] overflow-y-auto">
+          {children}
+        </div>
+        {footer && (
+          <DialogFooter>
+            {footer}
+          </DialogFooter>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -139,21 +96,21 @@ export function ConfirmModal({
       title={title}
       size="sm"
       footer={
-        <>
+        <div className="flex gap-3 justify-end w-full">
           <Button variant="secondary" onClick={onClose} disabled={isLoading}>
             {cancelText}
           </Button>
           <Button
-            variant={variant === 'danger' ? 'danger' : 'primary'}
+            variant={variant === 'danger' ? 'destructive' : 'default'}
             onClick={onConfirm}
             isLoading={isLoading}
           >
             {confirmText}
           </Button>
-        </>
+        </div>
       }
     >
-      <p style={{ color: '#d1d5db' }}>{message}</p>
+      <p className="text-muted-foreground">{message}</p>
     </Modal>
   );
 }

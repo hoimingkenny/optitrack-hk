@@ -1,16 +1,14 @@
 'use client';
 
-import { Box, Flex, Text, Button, Popover, IconButton } from '@chakra-ui/react';
+import { Button } from '@/components/ui/Button';
 import type { OptionWithSummary } from '@/db/schema';
 import { useMemo, useState, useRef } from 'react';
 import { useLanguage } from '@/components/providers/LanguageProvider';
+import { cn } from '@/lib/utils';
+import { Info } from 'lucide-react';
 
 function InfoIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  );
+  return <Info className={className} />;
 }
 
 interface OptionHeatmapProps {
@@ -100,11 +98,9 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
     });
 
     const count = expiringOptions.length;
-    if (count === 0) return { color: 'bg.muted', label: t('heatmap.no_options_expiring'), intensity: 0 };
+    if (count === 0) return { color: 'var(--muted)', label: t('heatmap.no_options_expiring'), intensity: 0 };
 
     // Intensity levels (1-5) based on count
-    // If we have many options, we might want to scale this differently, 
-    // but for now 1-5+ is a good start
     const intensity = Math.min(count, 5);
     const index = intensity - 1;
     
@@ -124,13 +120,13 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
       return { color: colorMaps.buyPut[index], label: `${count} ${t('heatmap.options_expiring')} (${t('heatmap.buy_put')})`, intensity };
     }
     
-    return { color: 'bg.muted', label: t('heatmap.no_options_expiring'), intensity: 0 };
+    return { color: 'var(--muted)', label: t('heatmap.no_options_expiring'), intensity: 0 };
   };
 
   // Group dates by week for the grid
   const weeks = useMemo(() => {
-    const weeksArray: Date[][] = [];
-    let currentWeek: Date[] = [];
+    const weeksArray: (Date | null)[][] = [];
+    let currentWeek: (Date | null)[] = [];
 
     // Calculate offset for the first week to align with Sunday/Monday
     const firstDate = calendarData[0];
@@ -138,7 +134,7 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
     
     // Add placeholders for empty days in the first week
     for (let i = 0; i < dayOfWeek; i++) {
-      currentWeek.push(null as any);
+      currentWeek.push(null);
     }
 
     calendarData.forEach((date) => {
@@ -152,7 +148,7 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
     if (currentWeek.length > 0) {
       // Fill the rest of the last week with nulls to maintain alignment
       while (currentWeek.length < 7) {
-        currentWeek.push(null as any);
+        currentWeek.push(null);
       }
       weeksArray.push(currentWeek);
     }
@@ -161,146 +157,118 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
   }, [calendarData]);
 
   return (
-    <Box 
-      bg="bg.surface" 
-      p={6} 
-      borderRadius="xl" 
-      borderWidth="1px" 
-      borderColor="border.default"
-      overflowX="auto"
+    <div 
+      className="bg-card p-6 rounded-xl border border-border overflow-x-auto"
     >
-      <Flex justifyContent="space-between" alignItems="center" mb={4}>
-        <Flex alignItems="center" gap={2}>
-          <Text fontSize="lg" fontWeight="semibold" color="fg.default">
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center gap-2 relative">
+          <span className="text-lg font-semibold text-foreground">
             {t('heatmap.title')}
-          </Text>
-          <Popover.Root 
-            open={isLegendOpen} 
-            onOpenChange={(details) => setIsLegendOpen(details.open)}
-            positioning={{ placement: 'right-start' }}
+          </span>
+          <div 
+            className="relative"
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
           >
-            <Popover.Trigger asChild>
-              <IconButton 
-                variant="ghost" 
-                size="xs" 
-                aria-label={t('heatmap.show_legend')} 
-                color="fg.muted"
-                bg="transparent"
-                _hover={{ bg: "transparent", color: "fg.muted" }}
-                _active={{ bg: "transparent" }}
-                _focus={{ bg: "transparent" }}
-                cursor="default"
+            <button 
+              className="p-1 rounded-md hover:bg-muted text-muted-foreground transition-colors cursor-default"
+              aria-label={t('heatmap.show_legend')} 
+              type="button"
+            >
+              <InfoIcon className="w-4 h-4" />
+            </button>
+            
+            {isLegendOpen && (
+              <div 
+                className="absolute left-full top-0 ml-2 z-50 w-60 p-4 rounded-lg bg-card shadow-lg border border-border animate-in fade-in zoom-in duration-150"
                 onMouseEnter={handleMouseEnter}
                 onMouseLeave={handleMouseLeave}
               >
-                <InfoIcon className="w-4 h-4" />
-              </IconButton>
-            </Popover.Trigger>
-            <Popover.Positioner zIndex="popover">
-              <Popover.Content 
-                width="240px" 
-                p={4} 
-                borderRadius="lg" 
-                bg="bg.surface" 
-                boxShadow="lg" 
-                border="1px solid" 
-                borderColor="border.default"
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
-              >
-                <Popover.Arrow />
-                <Popover.Body>
-                  <Flex direction="column" gap={4}>
-                    <Text fontWeight="semibold" fontSize="sm" color="fg.default">{t('heatmap.legend')}</Text>
+                <div className="flex flex-col gap-4">
+                  <p className="font-semibold text-sm text-foreground">{t('heatmap.legend')}</p>
+                  
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center gap-2 text-xs">
+                      <div 
+                        className="w-2.5 h-2.5 rounded-sm border border-foreground ring-1 ring-foreground"
+                      />
+                      <span className="text-foreground">{t('common.today')}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <div className="w-2.5 h-2.5 bg-muted rounded-sm" />
+                      <span className="text-foreground">{t('heatmap.no_expiry')}</span>
+                    </div>
                     
-                    <Flex direction="column" gap={3}>
-                      <Flex alignItems="center" gap={2} fontSize="xs">
-                        <Box 
-                          w="10px" 
-                          h="10px" 
-                          borderRadius="sm" 
-                          border="1px solid" 
-                          borderColor="fg.default" 
-                          boxShadow="0 0 0 1px var(--chakra-colors-fg-default)"
-                        />
-                        <Text color="fg.default">{t('common.today')}</Text>
-                      </Flex>
-                      <Flex alignItems="center" gap={2} fontSize="xs">
-                        <Box w="10px" h="10px" bg="bg.muted" borderRadius="sm" />
-                        <Text color="fg.default">{t('heatmap.no_expiry')}</Text>
-                      </Flex>
-                      
-                      <Box borderTop="1px solid" borderColor="border.subtle" pt={2} />
-                      <Flex direction="column" gap={2}>
-                        <Flex direction="column" gap={1}>
-                          <Text fontSize="11px" fontWeight="medium" color="fg.default">{t('heatmap.sell_put')}</Text>
-                          <Flex gap={1}>
-                            {colorMaps.sellPut.map((color, i) => (
-                              <Box key={i} w="12px" h="12px" bg={color} borderRadius="sm" title={t('heatmap.level').replace('{n}', (i + 1).toString())} />
-                            ))}
-                          </Flex>
-                        </Flex>
-                        <Flex direction="column" gap={1}>
-                          <Text fontSize="11px" fontWeight="medium" color="fg.default">{t('heatmap.sell_call')}</Text>
-                          <Flex gap={1}>
-                            {colorMaps.sellCall.map((color, i) => (
-                              <Box key={i} w="12px" h="12px" bg={color} borderRadius="sm" title={t('heatmap.level').replace('{n}', (i + 1).toString())} />
-                            ))}
-                          </Flex>
-                        </Flex>
-                        <Flex direction="column" gap={1}>
-                          <Text fontSize="11px" fontWeight="medium" color="fg.default">{t('heatmap.buy_call')}</Text>
-                          <Flex gap={1}>
-                            {colorMaps.buyCall.map((color, i) => (
-                              <Box key={i} w="12px" h="12px" bg={color} borderRadius="sm" title={t('heatmap.level').replace('{n}', (i + 1).toString())} />
-                            ))}
-                          </Flex>
-                        </Flex>
-                        <Flex direction="column" gap={1}>
-                          <Text fontSize="11px" fontWeight="medium" color="fg.default">{t('heatmap.buy_put')}</Text>
-                          <Flex gap={1}>
-                            {colorMaps.buyPut.map((color, i) => (
-                              <Box key={i} w="12px" h="12px" bg={color} borderRadius="sm" title={t('heatmap.level').replace('{n}', (i + 1).toString())} />
-                            ))}
-                          </Flex>
-                        </Flex>
-                      </Flex>
-                    </Flex>
-                    
-                    <Text fontSize="10px" color="fg.muted" pt={1}>
-                      {t('heatmap.intensity_desc')}
-                    </Text>
-                  </Flex>
-                </Popover.Body>
-              </Popover.Content>
-            </Popover.Positioner>
-          </Popover.Root>
-        </Flex>
-      </Flex>
+                    <div className="border-t border-border pt-2" />
+                    <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-1">
+                        <p className="text-[11px] font-medium text-foreground">{t('heatmap.sell_put')}</p>
+                        <div className="flex gap-1">
+                          {colorMaps.sellPut.map((color, i) => (
+                            <div key={i} className="w-3 h-3 rounded-sm" style={{ backgroundColor: color }} title={t('heatmap.level').replace('{n}', (i + 1).toString())} />
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <p className="text-[11px] font-medium text-foreground">{t('heatmap.sell_call')}</p>
+                        <div className="flex gap-1">
+                          {colorMaps.sellCall.map((color, i) => (
+                            <div key={i} className="w-3 h-3 rounded-sm" style={{ backgroundColor: color }} title={t('heatmap.level').replace('{n}', (i + 1).toString())} />
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <p className="text-[11px] font-medium text-foreground">{t('heatmap.buy_call')}</p>
+                        <div className="flex gap-1">
+                          {colorMaps.buyCall.map((color, i) => (
+                            <div key={i} className="w-3 h-3 rounded-sm" style={{ backgroundColor: color }} title={t('heatmap.level').replace('{n}', (i + 1).toString())} />
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <p className="text-[11px] font-medium text-foreground">{t('heatmap.buy_put')}</p>
+                        <div className="flex gap-1">
+                          {colorMaps.buyPut.map((color, i) => (
+                            <div key={i} className="w-3 h-3 rounded-sm" style={{ backgroundColor: color }} title={t('heatmap.level').replace('{n}', (i + 1).toString())} />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <p className="text-[10px] text-muted-foreground pt-1">
+                    {t('heatmap.intensity_desc')}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
       
-      <Flex direction={{ base: "column", lg: "row" }} gap={6}>
-        <Flex direction="column" flex="1" alignItems="center">
-          <Flex overflowX="auto" w="full" justifyContent="center" pb={2}>
-            <Flex minW="max-content">
+      <div className="flex flex-col lg:flex-row gap-6">
+        <div className="flex flex-col flex-1 items-center">
+          <div className="overflow-x-auto w-full flex justify-center pb-2">
+            <div className="min-w-max flex">
               {/* Day Labels (Mon, Wed, Fri) */}
-              <Flex direction="column" gap={1} mt="20px" mr={2} aria-hidden="true">
+              <div className="flex flex-col gap-1 mt-[20px] mr-2" aria-hidden="true">
                 {[0, 1, 2, 3, 4, 5, 6].map((dayIndex) => (
-                  <Box key={dayIndex} h="12px" display="flex" alignItems="center">
+                  <div key={dayIndex} className="h-3 flex items-center">
                     {/* Show label only for Mon (1), Wed (3), Fri (5) */}
                     {[1, 3, 5].includes(dayIndex) && (
-                      <Text fontSize="xs" color="fg.muted" lineHeight="1">
+                      <span className="text-[10px] text-muted-foreground leading-none">
                         {dayIndex === 1 ? t('heatmap.mon') : dayIndex === 3 ? t('heatmap.wed') : t('heatmap.fri')}
-                      </Text>
+                      </span>
                     )}
-                  </Box>
+                  </div>
                 ))}
-              </Flex>
-              <Box>
+              </div>
+              <div>
                 {/* Month Labels */}
-                <Flex gap={1} mb={1} h="15px">
+                <div className="flex gap-1 mb-1 h-[15px]">
                   {weeks.map((week, index) => {
                     const firstDayInWeek = week.find(d => d !== null);
-                    if (!firstDayInWeek) return <Box key={index} w="12px" />;
+                    if (!firstDayInWeek) return <div key={index} className="w-3" />;
                     // Find if the 1st of any month falls in this week
                     const monthStartingInWeek = week.find(d => d && d.getDate() === 1);
                     
@@ -312,30 +280,26 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
                     const labelDate = monthStartingInWeek || firstDayInWeek;
                     
                     return (
-                      <Box key={index} w="12px" overflow="visible" position="relative">
+                      <div key={index} className="w-3 overflow-visible relative">
                         {showLabel && (
-                          <Text 
-                            position="absolute" 
-                            fontSize="xs" 
-                            color="fg.muted" 
-                            whiteSpace="nowrap"
-                            top="-4px"
+                          <span 
+                            className="absolute text-[10px] text-muted-foreground whitespace-nowrap -top-1"
                           >
                             {labelDate.toLocaleString(language === 'zh' ? 'zh-HK' : 'en-US', { month: 'short' })}
-                          </Text>
+                          </span>
                         )}
-                      </Box>
+                      </div>
                     );
                   })}
-                </Flex>
+                </div>
 
                 {/* Heatmap Grid */}
-                <Flex gap={1}>
+                <div className="flex gap-1">
                   {weeks.map((week, weekIndex) => (
-                    <Flex key={weekIndex} direction="column" gap={1}>
+                    <div key={weekIndex} className="flex flex-col gap-1">
                       {week.map((date, dayIndex) => {
                         if (!date) {
-                          return <Box key={`empty-${dayIndex}`} w="12px" h="12px" />;
+                          return <div key={`empty-${dayIndex}`} className="w-3 h-3" />;
                         }
 
                         const activity = getActivityForDate(date);
@@ -344,58 +308,45 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
                         const isToday = date.toDateString() === new Date().toDateString();
 
                         return (
-                          <Box
+                          <div
                             key={date.toISOString()}
-                            w="12px"
-                            h="12px"
-                            borderRadius="sm"
-                            bg={activity.color}
+                            className={cn(
+                              "w-3 h-3 rounded-sm transition-all duration-150 relative hover:cursor-pointer hover:scale-125 hover:ring-2 hover:ring-offset-1 z-0 hover:z-10",
+                              isToday ? "border border-foreground ring-1 ring-foreground" : "border-none"
+                            )}
+                            style={{ 
+                              backgroundColor: activity.color.startsWith('var') ? `hsl(${activity.color})` : activity.color,
+                              '--tw-ring-color': activity.intensity === 0 ? 'hsl(var(--muted-foreground))' : activity.color.startsWith('var') ? `hsl(${activity.color})` : activity.color
+                            } as React.CSSProperties}
                             title={`${dateStr}: ${activity.label}${isToday ? ` (${t('heatmap.today')})` : ''}`}
-                            _hover={{ 
-                              cursor: 'pointer', 
-                              transform: 'scale(1.3)',
-                              outline: '2px solid',
-                              outlineColor: activity.color === 'bg.muted' ? 'gray.400' : activity.color,
-                              outlineOffset: '1px',
-                              zIndex: 10,
-                              opacity: 1
-                            }}
-                            transition="all 0.15s ease-in-out"
-                            position="relative"
-                            border={isToday ? "1px solid" : "none"}
-                            borderColor={isToday ? "fg.default" : "transparent"}
-                            boxShadow={isToday ? "0 0 0 1px var(--chakra-colors-fg-default)" : "none"}
                           />
                         );
                       })}
-                    </Flex>
+                    </div>
                   ))}
-                </Flex>
-              </Box>
-            </Flex>
-          </Flex>
-        </Flex>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Year Selection Sidebar */}
-        <Flex direction="column" gap={2} minW="100px">
+        <div className="flex flex-col gap-2 min-w-[100px]">
           {availableYears.map(year => (
             <Button
               key={year}
-              size="sm"
-              variant={selectedYear === year ? "solid" : "ghost"}
-              colorScheme={selectedYear === year ? "blue" : "gray"}
+              variant={selectedYear === year ? "default" : "ghost"}
               onClick={() => setSelectedYear(year)}
-              justifyContent="center"
-              borderRadius="md"
-              bg={selectedYear === year ? "blue.500" : "transparent"}
-              color={selectedYear === year ? "white" : "fg.muted"}
-              _hover={{ bg: selectedYear === year ? "blue.600" : "bg.muted" }}
+              className={cn(
+                "h-8 justify-center rounded-md text-sm",
+                selectedYear === year ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"
+              )}
             >
               {year}
             </Button>
           ))}
-        </Flex>
-      </Flex>
-    </Box>
+        </div>
+      </div>
+    </div>
   );
 }
