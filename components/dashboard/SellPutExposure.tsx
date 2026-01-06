@@ -62,28 +62,41 @@ export default function SellPutExposure({ options, timeRange = 'all' }: SellPutE
     });
   }, [options, timeRange]);
 
-  const topSellPuts = useMemo(() => {
+  // 1. First, always calculate the Top 5 items based on Exposure (Covering Cash)
+  // This memo only updates when the filteredOptions change, NOT when sorting changes.
+  const top5Items = useMemo(() => {
     const now = new Date();
-    const mapped = filteredOptions
-      .map(o => {
-        const strikePrice = typeof o.strike_price === 'string' ? parseFloat(o.strike_price) : o.strike_price;
-        const sharesPerContract = o.shares_per_contract || 500; 
-        const coveringCash = o.net_contracts * sharesPerContract * strikePrice;
-        const expiry = new Date(o.expiry_date);
-        const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        const optionName = `${o.stock_symbol} ${formatDateToYYYYMMDD(o.expiry_date)} ${strikePrice.toFixed(2)} Put`;
-        
-        return {
-          ...o,
-          strikePrice,
-          coveringCash,
-          daysLeft,
-          optionName
-        };
-      });
+    const mapped = filteredOptions.map(o => {
+      const strikePrice = typeof o.strike_price === 'string' ? parseFloat(o.strike_price) : o.strike_price;
+      const sharesPerContract = o.shares_per_contract || 500; 
+      const coveringCash = o.net_contracts * sharesPerContract * strikePrice;
+      const expiry = new Date(o.expiry_date);
+      const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      const optionName = `${o.stock_symbol} ${formatDateToYYYYMMDD(o.expiry_date)} ${strikePrice.toFixed(2)} Put`;
+      
+      return {
+        ...o,
+        strikePrice,
+        coveringCash,
+        daysLeft,
+        optionName
+      };
+    });
 
-    return mapped
-      .sort((a, b) => {
+    // Sort descending by coveringCash and take top 5
+    // Explicitly create a new array and sort it
+    const sortedByExposure = [...mapped].sort((a, b) => b.coveringCash - a.coveringCash);
+    
+    // Log for debugging (will appear in browser console)
+    console.log('SellPutExposure: Recalculated Top 5. Top value:', sortedByExposure[0]?.coveringCash);
+    
+    return sortedByExposure.slice(0, 5);
+  }, [filteredOptions]);
+
+  // 2. Then, sort these fixed Top 5 items based on user selection
+  const topSellPuts = useMemo(() => {
+    // If top5Items is already sliced to 5, this will only sort those 5 items.
+    return [...top5Items].sort((a, b) => {
         let comparison = 0;
         switch (sortField) {
           case 'name':
@@ -100,9 +113,8 @@ export default function SellPutExposure({ options, timeRange = 'all' }: SellPutE
             break;
         }
         return sortOrder === 'asc' ? comparison : -comparison;
-      })
-      .slice(0, 5);
-  }, [filteredOptions, sortField, sortOrder]);
+      });
+  }, [top5Items, sortField, sortOrder]);
 
   return (
     <Box 

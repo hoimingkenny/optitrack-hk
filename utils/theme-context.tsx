@@ -18,11 +18,9 @@ interface ThemeProviderProps {
 export function ThemeProvider({ children }: ThemeProviderProps) {
   // Start with light theme to match SSR
   const [theme, setTheme] = useState<Theme>('light');
-  const [mounted, setMounted] = useState(false);
 
   // Only run on client after mount
   useEffect(() => {
-    setMounted(true);
     const stored = localStorage.getItem('optitrack-theme') as Theme;
     if (stored === 'light' || stored === 'dark') {
       setTheme(stored);
@@ -38,11 +36,6 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   }, []);
 
   const value = useMemo(() => ({ theme, toggleTheme }), [theme, toggleTheme]);
-
-  // Don't render children until mounted to avoid hydration mismatch
-  if (!mounted) {
-    return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
-  }
 
   return (
     <ThemeContext.Provider value={value}>

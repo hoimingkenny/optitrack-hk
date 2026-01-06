@@ -1,4 +1,3 @@
-/// <reference path="./futu-api.d.ts" />
 import globalClient, { FutuClient } from './client';
 import * as dotenv from 'dotenv';
 import * as path from 'path';

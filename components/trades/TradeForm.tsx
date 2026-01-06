@@ -367,6 +367,7 @@ export default function TradeForm({
                     ...prev,
                     futu_code: code,
                     strike_price: selected.strikePrice.toString(),
+                    shares_per_contract: selected.lotSize || prev.shares_per_contract,
                   }));
                   if (errors.futu_code) setErrors(prev => ({ ...prev, futu_code: '' }));
                 }

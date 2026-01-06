@@ -61,28 +61,40 @@ export default function SellCallExposure({ options, timeRange = 'all' }: SellCal
     });
   }, [options, timeRange]);
 
-  const topSellCalls = useMemo(() => {
+  // 1. First, always calculate the Top 5 items based on Exposure (Covering Shares)
+  // This memo only updates when the filteredOptions change, NOT when sorting changes.
+  const top5Items = useMemo(() => {
     const now = new Date();
-    const mapped = filteredOptions
-      .map(o => {
-        const strikePrice = typeof o.strike_price === 'string' ? parseFloat(o.strike_price) : o.strike_price;
-        const sharesPerContract = o.shares_per_contract || 500; 
-        const coveringShares = o.net_contracts * sharesPerContract;
-        const expiry = new Date(o.expiry_date);
-        const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        const optionName = `${o.stock_symbol} ${formatDateToYYYYMMDD(o.expiry_date)} ${strikePrice.toFixed(2)} Call`;
+    const mapped = filteredOptions.map(o => {
+      const strikePrice = typeof o.strike_price === 'string' ? parseFloat(o.strike_price) : o.strike_price;
+      const sharesPerContract = o.shares_per_contract || 500; 
+      const coveringShares = o.net_contracts * sharesPerContract;
+      const expiry = new Date(o.expiry_date);
+      const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      const optionName = `${o.stock_symbol} ${formatDateToYYYYMMDD(o.expiry_date)} ${strikePrice.toFixed(2)} Call`;
 
-        return {
-          ...o,
-          strikePrice,
-          coveringShares,
-          daysLeft,
-          optionName
-        };
-      });
+      return {
+        ...o,
+        strikePrice,
+        coveringShares,
+        daysLeft,
+        optionName
+      };
+    });
 
-    return mapped
-      .sort((a, b) => {
+    // Sort descending by coveringShares and take top 5
+    // Explicitly create a new array and sort it
+    const sortedByExposure = [...mapped].sort((a, b) => b.coveringShares - a.coveringShares);
+    
+    // Log for debugging
+    console.log('SellCallExposure: Recalculated Top 5. Top value:', sortedByExposure[0]?.coveringShares);
+    
+    return sortedByExposure.slice(0, 5);
+  }, [filteredOptions]);
+
+  // 2. Then, sort these fixed Top 5 items based on user selection
+  const topSellCalls = useMemo(() => {
+    return [...top5Items].sort((a, b) => {
         let comparison = 0;
         switch (sortField) {
           case 'name':
@@ -99,9 +111,8 @@ export default function SellCallExposure({ options, timeRange = 'all' }: SellCal
             break;
         }
         return sortOrder === 'asc' ? comparison : -comparison;
-      })
-      .slice(0, 5);
-  }, [filteredOptions, sortField, sortOrder]);
+      });
+  }, [top5Items, sortField, sortOrder]);
 
   return (
     <Box 

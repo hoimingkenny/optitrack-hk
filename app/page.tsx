@@ -202,6 +202,16 @@ export default function Home() {
   const totalPNL = options.reduce((sum, option) => sum + option.total_pnl, 0);
   const openOptionsCount = options.filter(o => o.status === 'Open').length;
 
+  // Calculate total covering cash for all open sell puts
+  const totalCoveringCash = options.reduce((sum, option) => {
+    if (option.status === 'Open' && option.option_type === 'Put' && option.direction === 'Sell') {
+      const strikePrice = typeof option.strike_price === 'string' ? parseFloat(option.strike_price) : option.strike_price;
+      const sharesPerContract = (option as any).shares_per_contract || 500;
+      return sum + (option.net_contracts * sharesPerContract * strikePrice);
+    }
+    return sum;
+  }, 0);
+
   // Loading state
   if (initialLoading) {
     return (
@@ -285,22 +295,6 @@ export default function Home() {
           ) : options.length > 0 ? (
             <Box mb={6}>
               <Flex gap={4} flexWrap="wrap" mb={6}>
-                {/* Total Options */}
-                <Box 
-                  flex="1" 
-                  minW="200px"
-                  bg="bg.surface" 
-                  p={6} 
-                  borderRadius="xl" 
-                  borderWidth="1px" 
-                  borderColor="border.default"
-                >
-                  <Text fontSize="sm" color="fg.muted" mb={2}>Total Options</Text>
-                  <Text fontSize="3xl" fontWeight="bold" color="fg.default">
-                    {options.length}
-                  </Text>
-                </Box>
-
                 {/* Open Positions */}
                 <Box 
                   flex="1" 
@@ -336,6 +330,22 @@ export default function Home() {
                     {formatPNL(totalPNL)}
                   </Text>
                 </Box>
+
+                {/* Total Covering Cash */}
+                <Box 
+                  flex="1" 
+                  minW="200px"
+                  bg="bg.surface" 
+                  p={6} 
+                  borderRadius="xl" 
+                  borderWidth="1px" 
+                  borderColor="border.default"
+                >
+                  <Text fontSize="sm" color="fg.muted" mb={2}>Total Covering Cash</Text>
+                  <Text fontSize="3xl" fontWeight="bold" color="#D73535">
+                    {formatHKD(totalCoveringCash)}
+                  </Text>
+                </Box>
               </Flex>
 
               {/* Heatmap */}
@@ -345,7 +355,7 @@ export default function Home() {
               <Box mt={8}>
                 <Flex justifyContent="space-between" alignItems="flex-end" mb={4}>
                   <VStack align="start" gap={1}>
-                    <Heading size="md" color="fg.default">Top 5 Exposure Analysis</Heading>
+                    <Heading size="md" color="fg.default">Exposure Analysis</Heading>
                     <Text fontSize="xs" color="fg.muted">Concentrated risk by expiry milestone</Text>
                   </VStack>
                   <Box w="240px">
