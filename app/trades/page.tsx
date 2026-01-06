@@ -10,9 +10,11 @@ import OptionsTable from '@/components/options/OptionsTable';
 import TradeFiltersComponent from '@/components/trades/TradeFilters';
 import { toast } from '@/components/ui/Toast';
 import { useRouter } from 'next/navigation';
+import { useLanguage } from '@/components/providers/LanguageProvider';
 
 export default function AllTradesPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   
   // Auth state
   const [user, setUser] = useState<User | null>(null);
@@ -72,11 +74,11 @@ export default function AllTradesPage() {
       setOptions(data.options);
     } catch (error) {
       console.error('Error loading options:', error);
-      toast.error('Failed to load options');
+      toast.error(t('common.error'));
     } finally {
       setOptionsLoading(false);
     }
-  }, [user]);
+  }, [user, t]);
 
   useEffect(() => {
     if (user) {
@@ -88,9 +90,9 @@ export default function AllTradesPage() {
     try {
       await supabase.auth.signOut();
       router.push('/');
-      toast.info('Signed out successfully');
+      toast.info(t('auth.sign_out_success'));
     } catch {
-      toast.error('Failed to sign out');
+      toast.error(t('auth.sign_out_fail'));
     }
   };
 
@@ -113,7 +115,7 @@ export default function AllTradesPage() {
       <Center minH="100vh">
         <VStack>
           <Spinner size="xl" color="brand.500" borderWidth="4px" />
-          <Text color="fg.muted">Loading...</Text>
+          <Text color="fg.muted">{t('common.loading')}</Text>
         </VStack>
       </Center>
     );
@@ -132,9 +134,9 @@ export default function AllTradesPage() {
           {/* Header */}
           <Flex alignItems="center" justifyContent="space-between" mb={6}>
             <Box>
-              <Text fontSize="2xl" fontWeight="bold" color="fg.default">All Options</Text>
+              <Text fontSize="2xl" fontWeight="bold" color="fg.default">{t('trades.all_options_title')}</Text>
               <Text color="fg.muted" fontSize="sm">
-                {options.length} total option{options.length !== 1 ? 's' : ''}
+                {t('trades.total_options').replace('{count}', options.length.toString())}
               </Text>
             </Box>
           </Flex>
@@ -155,7 +157,7 @@ export default function AllTradesPage() {
             <Center py={12}>
               <VStack gap={2}>
                 <Spinner size="lg" color="brand.500" borderWidth="4px" />
-                <Text color="fg.muted">Loading options...</Text>
+                <Text color="fg.muted">{t('page.loading_options')}</Text>
               </VStack>
             </Center>
           ) : filteredOptions.length === 0 ? (
@@ -163,8 +165,8 @@ export default function AllTradesPage() {
               <VStack gap={4}>
                 <Text color="fg.muted" mb={0}>
                   {options.length === 0 
-                    ? "No options yet. Create your first option from the Dashboard!" 
-                    : "No options match your filters."}
+                    ? t('trades.no_options_dashboard')
+                    : t('trades.no_matching_filters')}
                 </Text>
               </VStack>
             </Center>

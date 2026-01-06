@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import type { OptionWithSummary } from '@/db/schema';
 import { formatDateToYYYYMMDD } from '@/utils/helpers/date-helpers';
 import { useRouter } from 'next/navigation';
+import { useLanguage } from '@/components/providers/LanguageProvider';
 
 interface SellCallExposureProps {
   options: OptionWithSummary[];
@@ -16,6 +17,7 @@ type SortOrder = 'asc' | 'desc';
 
 export default function SellCallExposure({ options, timeRange = 'all' }: SellCallExposureProps) {
   const router = useRouter();
+  const { t } = useLanguage();
   const [sortField, setSortField] = useState<SortField>('exposure');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
@@ -71,7 +73,7 @@ export default function SellCallExposure({ options, timeRange = 'all' }: SellCal
       const coveringShares = o.net_contracts * sharesPerContract;
       const expiry = new Date(o.expiry_date);
       const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      const optionName = `${o.stock_symbol} ${formatDateToYYYYMMDD(o.expiry_date)} ${strikePrice.toFixed(2)} Call`;
+      const optionName = `${o.stock_symbol} ${formatDateToYYYYMMDD(o.expiry_date)} ${strikePrice.toFixed(2)} ${t('exposure.call')}`;
 
       return {
         ...o,
@@ -123,7 +125,7 @@ export default function SellCallExposure({ options, timeRange = 'all' }: SellCal
       borderColor="border.default"
     >
       <Heading size="md" mb={4} color="fg.default">
-        Top 5 Sell Call Exposure (Covering Shares)
+        {t('exposure.top5_sell_call')}
       </Heading>
       <Box overflow="auto" maxH="320px">
         <Table.Root size="sm" variant="outline" stickyHeader>
@@ -137,7 +139,7 @@ export default function SellCallExposure({ options, timeRange = 'all' }: SellCal
                 _hover={{ bg: 'bg.muted' }}
               >
                 <HStack gap={1}>
-                  <Text>Option Name</Text>
+                  <Text>{t('exposure.option_name')}</Text>
                   {sortField === 'name' && (
                     sortOrder === 'asc' ? <ChevronUpIcon className="w-3 h-3" /> : <ChevronDownIcon className="w-3 h-3" />
                   )}
@@ -151,7 +153,7 @@ export default function SellCallExposure({ options, timeRange = 'all' }: SellCal
                 _hover={{ bg: 'bg.muted' }}
               >
                 <HStack gap={1} justifyContent="center">
-                  <Text>Days</Text>
+                  <Text>{t('exposure.days')}</Text>
                   {sortField === 'days' && (
                     sortOrder === 'asc' ? <ChevronUpIcon className="w-3 h-3" /> : <ChevronDownIcon className="w-3 h-3" />
                   )}
@@ -165,7 +167,7 @@ export default function SellCallExposure({ options, timeRange = 'all' }: SellCal
                 _hover={{ bg: 'bg.muted' }}
               >
                 <HStack gap={1} justifyContent="center">
-                  <Text>Net</Text>
+                  <Text>{t('exposure.net')}</Text>
                   {sortField === 'net' && (
                     sortOrder === 'asc' ? <ChevronUpIcon className="w-3 h-3" /> : <ChevronDownIcon className="w-3 h-3" />
                   )}
@@ -179,7 +181,7 @@ export default function SellCallExposure({ options, timeRange = 'all' }: SellCal
                 _hover={{ bg: 'bg.muted' }}
               >
                 <HStack gap={1} justifyContent="flex-end">
-                  <Text>Covering Shares</Text>
+                  <Text>{t('exposure.covering_shares')}</Text>
                   {sortField === 'exposure' && (
                     sortOrder === 'asc' ? <ChevronUpIcon className="w-3 h-3" /> : <ChevronDownIcon className="w-3 h-3" />
                   )}
@@ -203,7 +205,7 @@ export default function SellCallExposure({ options, timeRange = 'all' }: SellCal
                       {option.optionName}
                     </Table.Cell>
                     <Table.Cell textAlign="center" px={4} color="fg.muted">
-                      {option.daysLeft}d
+                      {option.daysLeft}{t('exposure.days_suffix')}
                     </Table.Cell>
                     <Table.Cell textAlign="center" px={4} color="fg.default">
                       {option.net_contracts}
@@ -217,7 +219,7 @@ export default function SellCallExposure({ options, timeRange = 'all' }: SellCal
             ) : (
               <Table.Row height="2.75rem">
                 <Table.Cell colSpan={4} textAlign="center" color="fg.muted" py={4}>
-                  No open sell calls found for this horizon
+                  {t('exposure.no_sell_calls')}
                 </Table.Cell>
               </Table.Row>
             )}
@@ -225,7 +227,7 @@ export default function SellCallExposure({ options, timeRange = 'all' }: SellCal
         </Table.Root>
       </Box>
       <Text fontSize="xs" color="fg.muted" mt={3}>
-        * Calculated based on the shares per contract of each option (defaulting to 500 if unknown).
+        {t('exposure.calculation_note')}
       </Text>
     </Box>
   );

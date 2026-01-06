@@ -13,6 +13,7 @@ import {
   Input as ChakraInput
 } from '@chakra-ui/react';
 import { Stock } from '@/db/schema';
+import { useLanguage } from '@/components/providers/LanguageProvider';
 
 // Simple hook to detect clicks outside
 function useOutsideClick({ ref, handler }: { ref: React.RefObject<HTMLElement | null>, handler: () => void }) {
@@ -41,6 +42,7 @@ interface StockSelectProps {
 }
 
 export default function StockSelect({ label, error, value, onSelect, required }: StockSelectProps) {
+  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState(value);
   const [results, setResults] = useState<Stock[]>([]);
@@ -128,7 +130,7 @@ export default function StockSelect({ label, error, value, onSelect, required }:
         <ChakraInput
           ref={inputRef}
           id={inputId}
-          placeholder="Search by symbol or name (e.g. 1299.HK or AIA)"
+          placeholder={t('trade.search_placeholder')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           onFocus={() => {
@@ -195,19 +197,19 @@ export default function StockSelect({ label, error, value, onSelect, required }:
             
             {isLoading && results.length === 0 && (
               <Box px={3} py={2}>
-                <Text fontSize="sm" color="fg.subtle">Searching...</Text>
+                <Text fontSize="sm" color="fg.subtle">{t('trade.searching')}</Text>
               </Box>
             )}
 
             {!isLoading && !hasError && results.length === 0 && search.length > 0 && (
               <Box px={3} py={2}>
-                <Text fontSize="sm" color="fg.subtle">No results found</Text>
+                <Text fontSize="sm" color="fg.subtle">{t('trade.no_results')}</Text>
               </Box>
             )}
 
             {!isLoading && hasError && (
               <Box px={3} py={2}>
-                <Text fontSize="sm" color="red.400">Failed to load stocks</Text>
+                <Text fontSize="sm" color="red.400">{t('trade.fetch_failed')}</Text>
               </Box>
             )}
           </VStack>

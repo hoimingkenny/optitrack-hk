@@ -5,6 +5,7 @@ import { Box, VStack, Text } from '@chakra-ui/react';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Card, { CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
+import { useLanguage } from '@/components/providers/LanguageProvider';
 
 interface AuthFormProps {
   mode: 'login' | 'signup';
@@ -21,6 +22,7 @@ export default function AuthForm({
   isLoading = false,
   error 
 }: AuthFormProps) {
+  const { t } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -31,17 +33,17 @@ export default function AuthForm({
     setValidationError('');
 
     if (!email || !password) {
-      setValidationError('Email and password are required');
+      setValidationError(t('auth.email_password_required'));
       return;
     }
 
     if (mode === 'signup' && password !== confirmPassword) {
-      setValidationError('Passwords do not match');
+      setValidationError(t('auth.passwords_no_match'));
       return;
     }
 
     if (password.length < 6) {
-      setValidationError('Password must be at least 6 characters');
+      setValidationError(t('auth.password_min_length'));
       return;
     }
 
@@ -54,13 +56,13 @@ export default function AuthForm({
         <CardHeader>
           <CardTitle>
             <Text textAlign="center" fontSize="2xl">
-              {mode === 'login' ? 'Sign In' : 'Create Account'}
+              {mode === 'login' ? t('auth.sign_in') : t('auth.create_account')}
             </Text>
           </CardTitle>
           <Text textAlign="center" color="fg.muted" fontSize="sm" mt={2}>
             {mode === 'login' 
-              ? 'Welcome back to OptiTrack HK' 
-              : 'Start tracking your HK options trades'}
+              ? t('auth.welcome_subtitle') 
+              : t('auth.start_tracking')}
           </Text>
         </CardHeader>
 
@@ -83,7 +85,7 @@ export default function AuthForm({
               )}
 
               <Input
-                label="Email"
+                label={t('auth.email_label')}
                 type="email"
                 placeholder="you@example.com"
                 value={email}
@@ -93,7 +95,7 @@ export default function AuthForm({
               />
 
               <Input
-                label="Password"
+                label={t('auth.password_label')}
                 type="password"
                 placeholder="••••••••"
                 value={password}
@@ -104,7 +106,7 @@ export default function AuthForm({
 
               {mode === 'signup' && (
                 <Input
-                  label="Confirm Password"
+                  label={t('auth.confirm_password_label')}
                   type="password"
                   placeholder="••••••••"
                   value={confirmPassword}
@@ -116,12 +118,12 @@ export default function AuthForm({
 
               <Box w="full">
                 <Button type="submit" size="lg" isLoading={isLoading}>
-                  <Box w="full">{mode === 'login' ? 'Sign In' : 'Create Account'}</Box>
+                  <Box w="full">{mode === 'login' ? t('auth.sign_in') : t('auth.create_account')}</Box>
                 </Button>
               </Box>
 
               <Text textAlign="center" fontSize="sm" color="gray.400">
-                {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+                {mode === 'login' ? t('auth.no_account') + ' ' : t('auth.has_account') + ' '}
                 <button
                   type="button"
                   onClick={onToggleMode}
@@ -138,7 +140,7 @@ export default function AuthForm({
                   onMouseEnter={(e) => e.currentTarget.style.color = '#93c5fd'}
                   onMouseLeave={(e) => e.currentTarget.style.color = '#60a5fa'}
                 >
-                  {mode === 'login' ? 'Sign up' : 'Sign in'}
+                  {mode === 'login' ? t('auth.sign_up_link') : t('auth.sign_in_link')}
                 </button>
               </Text>
             </VStack>

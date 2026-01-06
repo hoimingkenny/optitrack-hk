@@ -6,6 +6,7 @@ import { OptionFilters } from '@/db/schema';
 import Select from '../ui/Select';
 import Input from '../ui/Input';
 import Button from '@/components/ui/Button';
+import { useLanguage } from '@/components/providers/LanguageProvider';
 
 interface TradeFiltersProps {
   filters: OptionFilters;
@@ -13,34 +14,41 @@ interface TradeFiltersProps {
   stockSymbols: string[];
 }
 
-const STATUS_OPTIONS = [
-  { value: 'ALL', label: 'All Status' },
-  { value: 'Open', label: 'Open' },
-  { value: 'Closed', label: 'Closed' },
-  { value: 'Expired', label: 'Expired' },
-  { value: 'Exercised', label: 'Exercised' },
-  { value: 'Lapsed', label: 'Lapsed' },
-];
-
-const DIRECTION_OPTIONS = [
-  { value: 'ALL', label: 'All Directions' },
-  { value: 'Buy', label: 'Buy' },
-  { value: 'Sell', label: 'Sell' },
-];
-
-const OPTION_TYPE_OPTIONS = [
-  { value: 'ALL', label: 'All Types' },
-  { value: 'Call', label: 'Call' },
-  { value: 'Put', label: 'Put' },
-];
+// Remove old constant definitions since they are now defined inside the component
+// const STATUS_OPTIONS = ...
+// const DIRECTION_OPTIONS = ...
+// const OPTION_TYPE_OPTIONS = ...
 
 export default function TradeFiltersComponent({ 
   filters, 
   onFilterChange, 
   stockSymbols 
 }: TradeFiltersProps) {
+  const { t } = useLanguage();
+
+  const STATUS_OPTIONS = [
+    { value: 'ALL', label: t('filters.all_status') },
+    { value: 'Open', label: t('filters.status_open') },
+    { value: 'Closed', label: t('filters.status_closed') },
+    { value: 'Expired', label: t('filters.status_expired') },
+    { value: 'Exercised', label: t('filters.status_exercised') },
+    { value: 'Lapsed', label: t('filters.status_lapsed') },
+  ];
+
+  const DIRECTION_OPTIONS = [
+    { value: 'ALL', label: t('filters.all_directions') },
+    { value: 'Buy', label: t('filters.direction_buy') },
+    { value: 'Sell', label: t('filters.direction_sell') },
+  ];
+
+  const OPTION_TYPE_OPTIONS = [
+    { value: 'ALL', label: t('filters.all_types') },
+    { value: 'Call', label: t('filters.type_call') },
+    { value: 'Put', label: t('filters.type_put') },
+  ];
+
   const symbolOptions = [
-    { value: '', label: 'All Stocks' },
+    { value: '', label: t('filters.all_stocks') },
     ...stockSymbols.map(s => ({ value: s, label: s })),
   ];
 
@@ -70,7 +78,7 @@ export default function TradeFiltersComponent({
     >
       <Box flex="1" minW="150px">
         <Select
-          label="Stock"
+          label={t('filters.stock')}
           options={symbolOptions}
           value={filters.stock_symbol || ''}
           onChange={(e) => handleChange('stock_symbol', e.target.value)}
@@ -79,7 +87,7 @@ export default function TradeFiltersComponent({
       
       <Box flex="1" minW="120px">
         <Select
-          label="Status"
+          label={t('filters.status')}
           options={STATUS_OPTIONS}
           value={filters.status || 'ALL'}
           onChange={(e) => handleChange('status', e.target.value)}
@@ -88,7 +96,7 @@ export default function TradeFiltersComponent({
       
       <Box flex="1" minW="120px">
         <Select
-          label="Direction"
+          label={t('filters.direction')}
           options={DIRECTION_OPTIONS}
           value={filters.direction || 'ALL'}
           onChange={(e) => handleChange('direction', e.target.value)}
@@ -97,7 +105,7 @@ export default function TradeFiltersComponent({
 
       <Box flex="1" minW="120px">
         <Select
-          label="Type"
+          label={t('filters.type')}
           options={OPTION_TYPE_OPTIONS}
           value={filters.option_type || 'ALL'}
           onChange={(e) => handleChange('option_type', e.target.value)}
@@ -111,7 +119,7 @@ export default function TradeFiltersComponent({
             size="sm" 
             onClick={handleClearFilters}
           >
-            Clear Filters
+            {t('filters.clear')}
           </Button>
         </Box>
       )}

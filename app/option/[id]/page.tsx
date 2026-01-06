@@ -15,9 +15,11 @@ import { useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
 import AddTradeModal from '@/components/options/AddTradeModal';
 import EditTradeModal from '@/components/options/EditTradeModal';
+import { useLanguage } from '@/components/providers/LanguageProvider';
 
 export default function OptionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
+  const { t } = useLanguage();
   const [resolvedParams, setResolvedParams] = useState<{ id: string } | null>(null);
   
   // Auth state
@@ -162,7 +164,7 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
       
       if (!response.ok) {
         if (response.status === 404) {
-          toast.error('Option not found');
+          toast.error(t('detail.option_not_found'));
           router.push('/trades');
           return;
         }
@@ -173,7 +175,7 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
       setOptionData(data);
     } catch (error) {
       console.error('Error loading option:', error);
-      toast.error('Failed to load option details');
+      toast.error(t('detail.load_fail'));
     } finally {
       setLoading(false);
     }
@@ -223,7 +225,7 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
         throw new Error(error.error || 'Failed to add trade');
       }
 
-      toast.success('Trade added successfully');
+      toast.success(t('detail.trade_added'));
       setIsAddTradeModalOpen(false);
       await loadOption(); // Refresh data
     } catch (error: any) {
@@ -251,12 +253,12 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
     if (optionData && optionData.trades.length > 0) {
       const firstTradeId = optionData.trades[0].id;
       if (selectedTradeIds.has(firstTradeId)) {
-        toast.error("Cannot delete the first trade");
+        toast.error(t('detail.delete_first_trade_error'));
         return;
       }
     }
 
-    if (!confirm(`Are you sure you want to delete ${selectedTradeIds.size} trade(s)?`)) return;
+    if (!confirm(t('detail.confirm_delete_trades').replace('{count}', selectedTradeIds.size.toString()))) return;
 
     setIsDeletingTrades(true);
     try {
@@ -273,7 +275,7 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
 
       await Promise.all(deletePromises);
       
-      toast.success('Trades deleted successfully');
+      toast.success(t('detail.trades_deleted'));
       setSelectedTradeIds(new Set());
       await loadOption();
     } catch (error) {
@@ -287,7 +289,7 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
   const handleDeleteOption = async () => {
     if (!user || !resolvedParams?.id) return;
     
-    if (!confirm('Are you sure you want to delete this entire option and all its trades? This action cannot be undone.')) {
+    if (!confirm(t('detail.confirm_delete_option'))) {
       return;
     }
 
@@ -305,7 +307,7 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
         throw new Error('Failed to delete option');
       }
 
-      toast.success('Option deleted successfully');
+      toast.success(t('detail.option_deleted'));
       router.push('/trades');
     } catch (error) {
       console.error('Error deleting option:', error);
@@ -342,7 +344,7 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
         throw new Error(error.error || 'Failed to update trade');
       }
 
-      toast.success('Trade updated successfully');
+      toast.success(t('detail.trade_updated'));
       setIsEditTradeModalOpen(false);
       setEditingTrade(null);
       await loadOption();
@@ -358,9 +360,9 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
     try {
       await supabase.auth.signOut();
       router.push('/');
-      toast.info('Signed out successfully');
+      toast.info(t('auth.sign_out_success'));
     } catch {
-      toast.error('Failed to sign out');
+      toast.error(t('auth.sign_out_fail'));
     }
   };
 
@@ -373,7 +375,7 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
       <Center minH="100vh">
         <VStack>
           <Spinner size="xl" color="brand.500" borderWidth="4px" />
-          <Text color="fg.muted">Loading...</Text>
+          <Text color="fg.muted">{t('common.loading')}</Text>
         </VStack>
       </Center>
     );
@@ -393,12 +395,12 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
             <Center py={12}>
               <VStack gap={2}>
                 <Spinner size="lg" color="brand.500" borderWidth="4px" />
-                <Text color="fg.muted">Loading option details...</Text>
+                <Text color="fg.muted">{t('detail.load_fail')}</Text>
               </VStack>
             </Center>
           ) : !optionData ? (
             <Center py={12}>
-              <Text color="fg.muted">Option not found</Text>
+              <Text color="fg.muted">{t('detail.option_not_found')}</Text>
             </Center>
           ) : (
             <VStack gap={6} align="stretch">
@@ -406,7 +408,7 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
               <Box>
                 <Box mb={4}>
                   <Button variant="ghost" onClick={handleBack}>
-                    ← Back to All Options
+                    {t('detail.back_to_all')}
                   </Button>
                 </Box>
                 
@@ -428,7 +430,7 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                     onClick={handleDeleteOption}
                     isLoading={isDeletingOption}
                   >
-                    Remove Option
+                    {t('detail.remove_option')}
                   </Button>
                 </Flex>
               </Box>
@@ -441,23 +443,23 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                 borderColor="border.default"
                 p={6}
               >
-                <Heading size="md" mb={4} color="fg.default">Position Summary</Heading>
+                <Heading size="md" mb={4} color="fg.default">{t('detail.position_summary')}</Heading>
                 <SimpleGrid columns={{ base: 1, md: 3 }} gap={6}>
                   {/* Row 1: Position Details */}
                   <Box>
-                    <Text fontSize="sm" color="fg.muted" mb={1}>Total Opened</Text>
+                    <Text fontSize="sm" color="fg.muted" mb={1}>{t('detail.total_opened')}</Text>
                     <Text fontSize="2xl" fontWeight="bold" color="fg.default">
                       {optionData.summary.totalOpened}
                     </Text>
                   </Box>
                   <Box>
-                    <Text fontSize="sm" color="fg.muted" mb={1}>Total Closed</Text>
+                    <Text fontSize="sm" color="fg.muted" mb={1}>{t('detail.total_closed')}</Text>
                     <Text fontSize="2xl" fontWeight="bold" color="fg.default">
                       {optionData.summary.totalClosed}
                     </Text>
                   </Box>
                   <Box>
-                    <Text fontSize="sm" color="fg.muted" mb={1}>Net Position</Text>
+                    <Text fontSize="sm" color="fg.muted" mb={1}>{t('detail.net_position')}</Text>
                     <Text fontSize="2xl" fontWeight="bold" color="fg.default">
                       {optionData.summary.netContracts}
                     </Text>
@@ -468,7 +470,7 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                     <>
                       {optionData.status === 'Open' ? (
                         <Box>
-                          <Text fontSize="sm" color="fg.muted" mb={1}>Last Premium</Text>
+                          <Text fontSize="sm" color="fg.muted" mb={1}>{t('detail.last_premium')}</Text>
                           <Text fontSize="2xl" fontWeight="bold" color="blue.400">
                             {livePrice !== null 
                               ? formatHKD(livePrice) 
@@ -482,7 +484,7 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                         <Box display={{ base: 'none', md: 'block' }} />
                       )}
                       <Box>
-                        <Text fontSize="sm" color="fg.muted" mb={1}>Covering shares if exercised</Text>
+                        <Text fontSize="sm" color="fg.muted" mb={1}>{t('detail.covering_shares_exercised')}</Text>
                         <Text fontSize="2xl" fontWeight="bold" color="fg.default">
                           {(() => {
                             const sharesPerContract = optionData.trades[0]?.shares_per_contract || 500;
@@ -493,7 +495,7 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                       </Box>
                       <Box>
                         <Text fontSize="sm" color="fg.muted" mb={1}>
-                          {optionData.direction === 'Sell' ? 'Est. Cost to Close' : 'Est. Exit Value'}
+                          {optionData.direction === 'Sell' ? t('detail.est_cost_close') : t('detail.est_exit_value')}
                         </Text>
                         <Text fontSize="2xl" fontWeight="bold" color="fg.default">
                           {(() => {
@@ -511,7 +513,7 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
 
                   {/* Row 3: PNL */}
                   <Box>
-                    <Text fontSize="sm" color="fg.muted" mb={1}>Realized PNL</Text>
+                    <Text fontSize="sm" color="fg.muted" mb={1}>{t('detail.realized_pnl')}</Text>
                     <Text 
                       fontSize="2xl" 
                       fontWeight="bold" 
@@ -522,7 +524,7 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                   </Box>
                   
                   <Box>
-                    <Text fontSize="sm" color="fg.muted" mb={1}>Unrealized PNL</Text>
+                    <Text fontSize="sm" color="fg.muted" mb={1}>{t('detail.unrealized_pnl')}</Text>
                     <Text 
                       fontSize="2xl" 
                       fontWeight="bold" 
@@ -533,7 +535,7 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                   </Box>
 
                   <Box>
-                    <Text fontSize="sm" color="fg.muted" mb={1}>Net PNL</Text>
+                    <Text fontSize="sm" color="fg.muted" mb={1}>{t('detail.net_pnl')}</Text>
                     <Text 
                       fontSize="2xl" 
                       fontWeight="bold" 
@@ -554,26 +556,26 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                 p={6}
               >
                 <Heading size="md" mb={4} color="fg.default">
-                  Trades History ({optionData.trades.length})
+                  {t('detail.trades_history')} ({optionData.trades.length})
                 </Heading>
                 
                 {optionData.trades.length === 0 ? (
-                  <Text color="fg.muted">No trades yet</Text>
+                  <Text color="fg.muted">{t('detail.no_trades')}</Text>
                 ) : (
                   <Box overflowX="auto">
                     <Table.Root size="sm" variant="outline">
                       <Table.Header>
                         <Table.Row height="2.75rem">
                           <Table.ColumnHeader width="40px"></Table.ColumnHeader>
-                          <Table.ColumnHeader textAlign="center">Date</Table.ColumnHeader>
-                          <Table.ColumnHeader textAlign="center">Direction</Table.ColumnHeader>
-                          <Table.ColumnHeader textAlign="center">Premium</Table.ColumnHeader>
-                          <Table.ColumnHeader textAlign="center">Contract</Table.ColumnHeader>
-                          <Table.ColumnHeader textAlign="center">Total Premium</Table.ColumnHeader>
-                          <Table.ColumnHeader textAlign="center">Margin</Table.ColumnHeader>
-                          <Table.ColumnHeader textAlign="center">Fee</Table.ColumnHeader>
-                          <Table.ColumnHeader textAlign="center">Cash Flow</Table.ColumnHeader>
-                          <Table.ColumnHeader textAlign="center">Actions</Table.ColumnHeader>
+                          <Table.ColumnHeader textAlign="center">{t('detail.date')}</Table.ColumnHeader>
+                          <Table.ColumnHeader textAlign="center">{t('detail.direction')}</Table.ColumnHeader>
+                          <Table.ColumnHeader textAlign="center">{t('detail.premium')}</Table.ColumnHeader>
+                          <Table.ColumnHeader textAlign="center">{t('detail.contract')}</Table.ColumnHeader>
+                          <Table.ColumnHeader textAlign="center">{t('detail.total_premium')}</Table.ColumnHeader>
+                          <Table.ColumnHeader textAlign="center">{t('detail.margin')}</Table.ColumnHeader>
+                          <Table.ColumnHeader textAlign="center">{t('detail.fee')}</Table.ColumnHeader>
+                          <Table.ColumnHeader textAlign="center">{t('detail.cash_flow')}</Table.ColumnHeader>
+                          <Table.ColumnHeader textAlign="center">{t('detail.actions')}</Table.ColumnHeader>
                         </Table.Row>
                       </Table.Header>
                       <Table.Body>
@@ -661,7 +663,7 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                                   variant="ghost" 
                                   onClick={() => handleEditTradeClick(trade, logicalDirection)}
                                 >
-                                  Edit
+                                  {t('detail.edit')}
                                 </Button>
                               </Table.Cell>
                             </Table.Row>
@@ -677,7 +679,7 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
               {(optionData.status === 'Open' || (optionData.status === 'Expired' && optionData.summary.netContracts > 0)) && (
                 <Flex gap={3}>
                   <Button onClick={() => setIsAddTradeModalOpen(true)}>
-                    Add Trade
+                    {t('detail.add_trade')}
                   </Button>
                   {selectedTradeIds.size > 0 && (
                     <Button 
@@ -685,7 +687,7 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                       onClick={handleDeleteSelectedTrades}
                       isLoading={isDeletingTrades}
                     >
-                      Delete Selected ({selectedTradeIds.size})
+                      {t('detail.delete_selected')} ({selectedTradeIds.size})
                     </Button>
                   )}
                 </Flex>

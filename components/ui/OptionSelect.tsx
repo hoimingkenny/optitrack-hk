@@ -13,6 +13,7 @@ import {
   HStack
 } from '@chakra-ui/react';
 import { OptionChainItem } from '@/utils/futu/client';
+import { useLanguage } from '@/components/providers/LanguageProvider';
 
 interface OptionSelectProps {
   label?: string;
@@ -37,6 +38,7 @@ export default function OptionSelect({
   required,
   disabled
 }: OptionSelectProps) {
+  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [results, setResults] = useState<OptionChainItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -123,7 +125,7 @@ export default function OptionSelect({
               <Text fontSize="xs" color="fg.muted">{selectedItem.code}</Text>
             </HStack>
           ) : (
-            <Text color="fg.subtle">Select strike price...</Text>
+            <Text color="fg.subtle">{t('trade.select_strike')}</Text>
           )}
         </Box>
 
@@ -163,8 +165,8 @@ export default function OptionSelect({
                   >
                     <Flex justify="space-between" align="center">
                       <VStack align="start" gap={0}>
-                        <Text fontWeight="bold">Strike: {item.strikePrice}</Text>
-                        <Text fontSize="xs" color="fg.muted">Last: {item.premium || '-'}</Text>
+                        <Text fontWeight="bold">{t('trade.strike_label').replace('{price}', item.strikePrice.toString())}</Text>
+                        <Text fontSize="xs" color="fg.muted">{t('trade.last_price').replace('{price}', (item.premium || '-').toString())}</Text>
                       </VStack>
                       <Badge size="xs" colorPalette={item.optionType === 1 ? 'green' : 'red'}>
                         {item.optionType === 1 ? 'CALL' : 'PUT'}
@@ -175,7 +177,7 @@ export default function OptionSelect({
               ) : (
                 <Box p={4} textAlign="center">
                   <Text fontSize="sm" color="fg.muted">
-                    {symbol && expiryDate ? 'No options found' : 'Select Stock and Expiry first'}
+                    {symbol && expiryDate ? t('trade.no_options_found') : t('trade.select_stock_expiry')}
                   </Text>
                 </Box>
               )}

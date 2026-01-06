@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Box, Flex, HStack, Text } from '@chakra-ui/react';
 import Button from '@/components/ui/Button';
+import { useLanguage } from '@/components/providers/LanguageProvider';
 
 interface DashboardNavProps {
   onSignOut: () => void;
@@ -12,11 +13,12 @@ interface DashboardNavProps {
 
 export default function DashboardNav({ onSignOut, userEmail }: DashboardNavProps) {
   const pathname = usePathname();
+  const { language, setLanguage, t } = useLanguage();
 
   const navItems = [
-    { href: '/', label: 'Dashboard', icon: HomeIcon },
-    { href: '/trades', label: 'All Trades', icon: ListIcon },
-    { href: '/futu/options', label: 'Options', icon: ChartBarIcon },
+    { href: '/', label: t('nav.dashboard'), icon: HomeIcon },
+    { href: '/trades', label: t('nav.all_trades'), icon: ListIcon },
+    { href: '/futu/options', label: t('nav.options'), icon: ChartBarIcon },
   ];
 
   return (
@@ -70,6 +72,13 @@ export default function DashboardNav({ onSignOut, userEmail }: DashboardNavProps
 
           {/* User Menu */}
           <HStack gap={4}>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setLanguage(language === 'en' ? 'zh' : 'en')}
+            >
+              {language === 'en' ? '中文' : 'EN'}
+            </Button>
             {userEmail && (
               <Text
                 display={{ base: 'none', sm: 'block' }}
@@ -82,7 +91,7 @@ export default function DashboardNav({ onSignOut, userEmail }: DashboardNavProps
               </Text>
             )}
             <Button variant="ghost" size="sm" onClick={onSignOut}>
-              Sign Out
+              {t('nav.sign_out')}
             </Button>
           </HStack>
         </Flex>

@@ -8,6 +8,7 @@ import { formatPNL } from '@/utils/helpers/pnl-calculator';
 import { formatDateToYYYYMMDD } from '@/utils/helpers/date-helpers';
 import { useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
+import { useLanguage } from '@/components/providers/LanguageProvider';
 
 interface OptionsTableProps {
   options: OptionWithSummary[];
@@ -18,6 +19,7 @@ type SortOrder = 'asc' | 'desc';
 
 export default function OptionsTable({ options }: OptionsTableProps) {
   const router = useRouter();
+  const { t } = useLanguage();
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [currentPage, setCurrentPage] = useState(1);
@@ -108,7 +110,7 @@ export default function OptionsTable({ options }: OptionsTableProps) {
           <Table.Header>
             <Table.Row height="2.75rem">
               <SortableHeader 
-                label="Option Name" 
+                label={t('table.option_name')}
                 field="name" 
                 currentSort={sortField} 
                 sortOrder={sortOrder} 
@@ -116,7 +118,7 @@ export default function OptionsTable({ options }: OptionsTableProps) {
                 align="left"
               />
               <SortableHeader 
-                label="Direction" 
+                label={t('table.direction')}
                 field="direction" 
                 currentSort={sortField} 
                 sortOrder={sortOrder} 
@@ -124,7 +126,7 @@ export default function OptionsTable({ options }: OptionsTableProps) {
                 align="center"
               />
               <SortableHeader 
-                label="Days Left" 
+                label={t('table.days_left')}
                 field="days" 
                 currentSort={sortField} 
                 sortOrder={sortOrder} 
@@ -132,7 +134,7 @@ export default function OptionsTable({ options }: OptionsTableProps) {
                 align="center"
               />
               <SortableHeader 
-                label="Net contract" 
+                label={t('table.net_contract')}
                 field="net_contracts" 
                 currentSort={sortField} 
                 sortOrder={sortOrder} 
@@ -140,7 +142,7 @@ export default function OptionsTable({ options }: OptionsTableProps) {
                 align="center"
               />
               <SortableHeader 
-                label="Net PnL" 
+                label={t('table.net_pnl')}
                 field="total_pnl" 
                 currentSort={sortField} 
                 sortOrder={sortOrder} 
@@ -148,7 +150,7 @@ export default function OptionsTable({ options }: OptionsTableProps) {
                 align="center"
               />
               <SortableHeader 
-                label="Status" 
+                label={t('table.status')}
                 field="status" 
                 currentSort={sortField} 
                 sortOrder={sortOrder} 
@@ -203,7 +205,7 @@ export default function OptionsTable({ options }: OptionsTableProps) {
             {paginatedOptions.length === 0 && (
               <Table.Row>
                 <Table.Cell colSpan={6} textAlign="center" py={4} color="fg.muted">
-                  No options found
+                  {t('table.no_options')}
                 </Table.Cell>
               </Table.Row>
             )}
@@ -215,7 +217,10 @@ export default function OptionsTable({ options }: OptionsTableProps) {
       {totalPages > 1 && (
         <Flex justifyContent="space-between" alignItems="center" mt={4} px={2}>
           <Text fontSize="sm" color="fg.muted">
-            Showing {(currentPage - 1) * PAGE_SIZE + 1} to {Math.min(currentPage * PAGE_SIZE, sortedOptions.length)} of {sortedOptions.length} options
+            {t('table.showing_range')
+              .replace('{start}', ((currentPage - 1) * PAGE_SIZE + 1).toString())
+              .replace('{end}', Math.min(currentPage * PAGE_SIZE, sortedOptions.length).toString())
+              .replace('{total}', sortedOptions.length.toString())}
           </Text>
           <HStack gap={2}>
             <Button 
@@ -224,10 +229,12 @@ export default function OptionsTable({ options }: OptionsTableProps) {
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
             >
-              Previous
+              {t('table.previous')}
             </Button>
             <Text fontSize="sm" fontWeight="medium">
-              Page {currentPage} of {totalPages}
+              {t('table.page_info')
+                .replace('{current}', currentPage.toString())
+                .replace('{total}', totalPages.toString())}
             </Text>
             <Button 
               variant="secondary" 
@@ -235,7 +242,7 @@ export default function OptionsTable({ options }: OptionsTableProps) {
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
             >
-              Next
+              {t('table.next')}
             </Button>
           </HStack>
         </Flex>

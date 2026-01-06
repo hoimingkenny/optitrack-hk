@@ -6,6 +6,7 @@ import type { OptionWithSummary } from '@/db/schema';
 import { formatHKD } from '@/utils/helpers/pnl-calculator';
 import { formatDateToYYYYMMDD } from '@/utils/helpers/date-helpers';
 import { useRouter } from 'next/navigation';
+import { useLanguage } from '@/components/providers/LanguageProvider';
 
 type SortField = 'name' | 'days' | 'net' | 'exposure';
 type SortOrder = 'asc' | 'desc';
@@ -17,6 +18,7 @@ interface SellPutExposureProps {
 
 export default function SellPutExposure({ options, timeRange = 'all' }: SellPutExposureProps) {
   const router = useRouter();
+  const { t } = useLanguage();
   const [sortField, setSortField] = useState<SortField>('exposure');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
@@ -72,7 +74,7 @@ export default function SellPutExposure({ options, timeRange = 'all' }: SellPutE
       const coveringCash = o.net_contracts * sharesPerContract * strikePrice;
       const expiry = new Date(o.expiry_date);
       const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      const optionName = `${o.stock_symbol} ${formatDateToYYYYMMDD(o.expiry_date)} ${strikePrice.toFixed(2)} Put`;
+      const optionName = `${o.stock_symbol} ${formatDateToYYYYMMDD(o.expiry_date)} ${strikePrice.toFixed(2)} ${t('exposure.put')}`;
       
       return {
         ...o,
@@ -125,7 +127,7 @@ export default function SellPutExposure({ options, timeRange = 'all' }: SellPutE
       borderColor="border.default"
     >
       <Heading size="md" mb={4} color="fg.default">
-        Top 5 Sell Put Exposure (Covering Cash)
+        {t('exposure.top5_sell_put')}
       </Heading>
       <Box overflow="auto" maxH="320px">
         <Table.Root size="sm" variant="outline" stickyHeader>
@@ -139,7 +141,7 @@ export default function SellPutExposure({ options, timeRange = 'all' }: SellPutE
                 _hover={{ bg: 'bg.muted' }}
               >
                 <HStack gap={1}>
-                  <Text>Option Name</Text>
+                  <Text>{t('exposure.option_name')}</Text>
                   {sortField === 'name' && (
                     sortOrder === 'asc' ? <ChevronUpIcon className="w-3 h-3" /> : <ChevronDownIcon className="w-3 h-3" />
                   )}
@@ -153,7 +155,7 @@ export default function SellPutExposure({ options, timeRange = 'all' }: SellPutE
                 _hover={{ bg: 'bg.muted' }}
               >
                 <HStack gap={1} justifyContent="center">
-                  <Text>Days</Text>
+                  <Text>{t('exposure.days')}</Text>
                   {sortField === 'days' && (
                     sortOrder === 'asc' ? <ChevronUpIcon className="w-3 h-3" /> : <ChevronDownIcon className="w-3 h-3" />
                   )}
@@ -167,7 +169,7 @@ export default function SellPutExposure({ options, timeRange = 'all' }: SellPutE
                 _hover={{ bg: 'bg.muted' }}
               >
                 <HStack gap={1} justifyContent="center">
-                  <Text>Net</Text>
+                  <Text>{t('exposure.net')}</Text>
                   {sortField === 'net' && (
                     sortOrder === 'asc' ? <ChevronUpIcon className="w-3 h-3" /> : <ChevronDownIcon className="w-3 h-3" />
                   )}
@@ -181,7 +183,7 @@ export default function SellPutExposure({ options, timeRange = 'all' }: SellPutE
                 _hover={{ bg: 'bg.muted' }}
               >
                 <HStack gap={1} justifyContent="flex-end">
-                  <Text>Covering Cash</Text>
+                  <Text>{t('exposure.covering_cash')}</Text>
                   {sortField === 'exposure' && (
                     sortOrder === 'asc' ? <ChevronUpIcon className="w-3 h-3" /> : <ChevronDownIcon className="w-3 h-3" />
                   )}
@@ -205,7 +207,7 @@ export default function SellPutExposure({ options, timeRange = 'all' }: SellPutE
                       {option.optionName}
                     </Table.Cell>
                     <Table.Cell textAlign="center" px={4} color="fg.muted">
-                      {option.daysLeft}d
+                      {option.daysLeft}{t('exposure.days_suffix')}
                     </Table.Cell>
                     <Table.Cell textAlign="center" px={4} color="fg.default">
                       {option.net_contracts}
@@ -219,7 +221,7 @@ export default function SellPutExposure({ options, timeRange = 'all' }: SellPutE
             ) : (
               <Table.Row height="2.75rem">
                 <Table.Cell colSpan={4} textAlign="center" color="fg.muted" py={4}>
-                  No open sell puts found for this horizon
+                  {t('exposure.no_sell_puts')}
                 </Table.Cell>
               </Table.Row>
             )}
@@ -227,7 +229,7 @@ export default function SellPutExposure({ options, timeRange = 'all' }: SellPutE
         </Table.Root>
       </Box>
       <Text fontSize="xs" color="fg.muted" mt={3}>
-        * Calculated based on the shares per contract of each option (defaulting to 500 if unknown).
+        {t('exposure.calculation_note')}
       </Text>
     </Box>
   );

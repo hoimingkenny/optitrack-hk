@@ -3,6 +3,7 @@
 import { Box, Flex, Text, Button, Popover, IconButton } from '@chakra-ui/react';
 import type { OptionWithSummary } from '@/db/schema';
 import { useMemo, useState, useRef } from 'react';
+import { useLanguage } from '@/components/providers/LanguageProvider';
 
 function InfoIcon({ className }: { className?: string }) {
   return (
@@ -17,6 +18,7 @@ interface OptionHeatmapProps {
 }
 
 export default function OptionHeatmap({ options }: OptionHeatmapProps) {
+  const { t, language } = useLanguage();
   const [isLegendOpen, setIsLegendOpen] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -98,7 +100,7 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
     });
 
     const count = expiringOptions.length;
-    if (count === 0) return { color: 'bg.muted', label: 'No options expiring', intensity: 0 };
+    if (count === 0) return { color: 'bg.muted', label: t('heatmap.no_options_expiring'), intensity: 0 };
 
     // Intensity levels (1-5) based on count
     // If we have many options, we might want to scale this differently, 
@@ -113,16 +115,16 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
     const hasBuyPut = expiringOptions.some(o => o.direction === 'Buy' && o.option_type === 'Put');
 
     if (hasSellPut) {
-      return { color: colorMaps.sellPut[index], label: `${count} option(s) expiring (Sell Put)`, intensity };
+      return { color: colorMaps.sellPut[index], label: `${count} ${t('heatmap.options_expiring')} (${t('heatmap.sell_put')})`, intensity };
     } else if (hasSellCall) {
-      return { color: colorMaps.sellCall[index], label: `${count} option(s) expiring (Sell Call)`, intensity };
+      return { color: colorMaps.sellCall[index], label: `${count} ${t('heatmap.options_expiring')} (${t('heatmap.sell_call')})`, intensity };
     } else if (hasBuyCall) {
-      return { color: colorMaps.buyCall[index], label: `${count} option(s) expiring (Buy Call)`, intensity };
+      return { color: colorMaps.buyCall[index], label: `${count} ${t('heatmap.options_expiring')} (${t('heatmap.buy_call')})`, intensity };
     } else if (hasBuyPut) {
-      return { color: colorMaps.buyPut[index], label: `${count} option(s) expiring (Buy Put)`, intensity };
+      return { color: colorMaps.buyPut[index], label: `${count} ${t('heatmap.options_expiring')} (${t('heatmap.buy_put')})`, intensity };
     }
     
-    return { color: 'bg.muted', label: 'No options expiring', intensity: 0 };
+    return { color: 'bg.muted', label: t('heatmap.no_options_expiring'), intensity: 0 };
   };
 
   // Group dates by week for the grid
@@ -170,7 +172,7 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
       <Flex justifyContent="space-between" alignItems="center" mb={4}>
         <Flex alignItems="center" gap={2}>
           <Text fontSize="lg" fontWeight="semibold" color="fg.default">
-            Option Expiration Heatmap
+            {t('heatmap.title')}
           </Text>
           <Popover.Root 
             open={isLegendOpen} 
@@ -181,7 +183,7 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
               <IconButton 
                 variant="ghost" 
                 size="xs" 
-                aria-label="Show color legend" 
+                aria-label={t('heatmap.show_legend')} 
                 color="fg.muted"
                 bg="transparent"
                 _hover={{ bg: "transparent", color: "fg.muted" }}
@@ -209,7 +211,7 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
                 <Popover.Arrow />
                 <Popover.Body>
                   <Flex direction="column" gap={4}>
-                    <Text fontWeight="semibold" fontSize="sm" color="fg.default">Color Legend</Text>
+                    <Text fontWeight="semibold" fontSize="sm" color="fg.default">{t('heatmap.legend')}</Text>
                     
                     <Flex direction="column" gap={3}>
                       <Flex alignItems="center" gap={2} fontSize="xs">
@@ -221,49 +223,44 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
                           borderColor="fg.default" 
                           boxShadow="0 0 0 1px var(--chakra-colors-fg-default)"
                         />
-                        <Text color="fg.default">Today</Text>
+                        <Text color="fg.default">{t('common.today')}</Text>
                       </Flex>
-
                       <Flex alignItems="center" gap={2} fontSize="xs">
                         <Box w="10px" h="10px" bg="bg.muted" borderRadius="sm" />
-                        <Text color="fg.default">No Expiry</Text>
+                        <Text color="fg.default">{t('heatmap.no_expiry')}</Text>
                       </Flex>
                       
                       <Box borderTop="1px solid" borderColor="border.subtle" pt={2} />
-
                       <Flex direction="column" gap={2}>
                         <Flex direction="column" gap={1}>
-                          <Text fontSize="11px" fontWeight="medium" color="fg.default">Sell Put</Text>
+                          <Text fontSize="11px" fontWeight="medium" color="fg.default">{t('heatmap.sell_put')}</Text>
                           <Flex gap={1}>
                             {colorMaps.sellPut.map((color, i) => (
-                              <Box key={i} w="12px" h="12px" bg={color} borderRadius="sm" title={`Level ${i+1}`} />
+                              <Box key={i} w="12px" h="12px" bg={color} borderRadius="sm" title={t('heatmap.level').replace('{n}', (i + 1).toString())} />
                             ))}
                           </Flex>
                         </Flex>
-
                         <Flex direction="column" gap={1}>
-                          <Text fontSize="11px" fontWeight="medium" color="fg.default">Sell Call</Text>
+                          <Text fontSize="11px" fontWeight="medium" color="fg.default">{t('heatmap.sell_call')}</Text>
                           <Flex gap={1}>
                             {colorMaps.sellCall.map((color, i) => (
-                              <Box key={i} w="12px" h="12px" bg={color} borderRadius="sm" title={`Level ${i+1}`} />
+                              <Box key={i} w="12px" h="12px" bg={color} borderRadius="sm" title={t('heatmap.level').replace('{n}', (i + 1).toString())} />
                             ))}
                           </Flex>
                         </Flex>
-
                         <Flex direction="column" gap={1}>
-                          <Text fontSize="11px" fontWeight="medium" color="fg.default">Buy Call</Text>
+                          <Text fontSize="11px" fontWeight="medium" color="fg.default">{t('heatmap.buy_call')}</Text>
                           <Flex gap={1}>
                             {colorMaps.buyCall.map((color, i) => (
-                              <Box key={i} w="12px" h="12px" bg={color} borderRadius="sm" title={`Level ${i+1}`} />
+                              <Box key={i} w="12px" h="12px" bg={color} borderRadius="sm" title={t('heatmap.level').replace('{n}', (i + 1).toString())} />
                             ))}
                           </Flex>
                         </Flex>
-
                         <Flex direction="column" gap={1}>
-                          <Text fontSize="11px" fontWeight="medium" color="fg.default">Buy Put</Text>
+                          <Text fontSize="11px" fontWeight="medium" color="fg.default">{t('heatmap.buy_put')}</Text>
                           <Flex gap={1}>
                             {colorMaps.buyPut.map((color, i) => (
-                              <Box key={i} w="12px" h="12px" bg={color} borderRadius="sm" title={`Level ${i+1}`} />
+                              <Box key={i} w="12px" h="12px" bg={color} borderRadius="sm" title={t('heatmap.level').replace('{n}', (i + 1).toString())} />
                             ))}
                           </Flex>
                         </Flex>
@@ -271,7 +268,7 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
                     </Flex>
                     
                     <Text fontSize="10px" color="fg.muted" pt={1}>
-                      Intensity (1-5+) increases with the number of options expiring on that date.
+                      {t('heatmap.intensity_desc')}
                     </Text>
                   </Flex>
                 </Popover.Body>
@@ -292,20 +289,18 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
                     {/* Show label only for Mon (1), Wed (3), Fri (5) */}
                     {[1, 3, 5].includes(dayIndex) && (
                       <Text fontSize="xs" color="fg.muted" lineHeight="1">
-                        {dayIndex === 1 ? 'Mon' : dayIndex === 3 ? 'Wed' : 'Fri'}
+                        {dayIndex === 1 ? t('heatmap.mon') : dayIndex === 3 ? t('heatmap.wed') : t('heatmap.fri')}
                       </Text>
                     )}
                   </Box>
                 ))}
               </Flex>
-
               <Box>
                 {/* Month Labels */}
                 <Flex gap={1} mb={1} h="15px">
                   {weeks.map((week, index) => {
                     const firstDayInWeek = week.find(d => d !== null);
                     if (!firstDayInWeek) return <Box key={index} w="12px" />;
-
                     // Find if the 1st of any month falls in this week
                     const monthStartingInWeek = week.find(d => d && d.getDate() === 1);
                     
@@ -326,7 +321,7 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
                             whiteSpace="nowrap"
                             top="-4px"
                           >
-                            {labelDate.toLocaleString('default', { month: 'short' })}
+                            {labelDate.toLocaleString(language === 'zh' ? 'zh-HK' : 'en-US', { month: 'short' })}
                           </Text>
                         )}
                       </Box>
@@ -344,7 +339,8 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
                         }
 
                         const activity = getActivityForDate(date);
-                        const dateStr = date.toLocaleDateString('en-HK', { month: 'short', day: 'numeric', year: 'numeric' });
+                        const locale = language === 'zh' ? 'zh-HK' : 'en-HK';
+                        const dateStr = date.toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' });
                         const isToday = date.toDateString() === new Date().toDateString();
 
                         return (
@@ -354,7 +350,7 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
                             h="12px"
                             borderRadius="sm"
                             bg={activity.color}
-                            title={`${dateStr}: ${activity.label}${isToday ? ' (Today)' : ''}`}
+                            title={`${dateStr}: ${activity.label}${isToday ? ` (${t('heatmap.today')})` : ''}`}
                             _hover={{ 
                               cursor: 'pointer', 
                               transform: 'scale(1.3)',

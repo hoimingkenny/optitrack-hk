@@ -12,6 +12,7 @@ import Select from '@/components/ui/Select';
 import StockSelect from '@/components/ui/StockSelect';
 import { Switch } from '@/components/ui/Switch';
 import { OptionChainItem } from '@/utils/futu/client';
+import { useLanguage } from '@/components/providers/LanguageProvider';
 
 interface TradeFormData {
   stock_symbol: string;
@@ -35,22 +36,24 @@ interface TradeFormProps {
   initialData?: Partial<TradeFormData>;
 }
 
-const DIRECTION_OPTIONS = [
-  { value: 'Buy', label: 'Buy' },
-  { value: 'Sell', label: 'Sell' },
-];
-
-const OPTION_TYPE_OPTIONS = [
-  { value: 'Call', label: 'Call' },
-  { value: 'Put', label: 'Put' },
-];
-
 export default function TradeForm({ 
   onSubmit, 
   onCancel, 
   isLoading = false,
   initialData
 }: TradeFormProps) {
+  const { t } = useLanguage();
+
+  const DIRECTION_OPTIONS = [
+    { value: 'Buy', label: t('filters.direction_buy') },
+    { value: 'Sell', label: t('filters.direction_sell') },
+  ];
+
+  const OPTION_TYPE_OPTIONS = [
+    { value: 'Call', label: t('filters.type_call') },
+    { value: 'Put', label: t('filters.type_put') },
+  ];
+
   const [formData, setFormData] = useState<TradeFormData>({
     stock_symbol: initialData?.stock_symbol || '',
     shares_per_contract: initialData?.shares_per_contract || DEFAULT_SHARES_PER_CONTRACT,
@@ -212,19 +215,19 @@ export default function TradeForm({
     // Additional validations for Expired Option
     if (isExpired) {
       if (!input.expiry_date) {
-        validationErrors.push({ field: 'expiry_date', message: 'Expiration date is required' });
+        validationErrors.push({ field: 'expiry_date', message: t('trade.validation_error') });
       } else if (isWeekend(input.expiry_date)) {
-        validationErrors.push({ field: 'expiry_date', message: 'Cannot select weekends (Sat/Sun)' });
+        validationErrors.push({ field: 'expiry_date', message: t('trade.weekend_error') });
       }
 
       if (!input.strike_price) {
-        validationErrors.push({ field: 'strike_price', message: 'Strike price is required' });
+        validationErrors.push({ field: 'strike_price', message: t('trade.validation_error') });
       }
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       if (new Date(input.trade_date!) >= today) {
-        validationErrors.push({ field: 'trade_date', message: 'Trade date must be before today for expired options' });
+        validationErrors.push({ field: 'trade_date', message: t('trade.date_error_expired') });
       }
     }
 
@@ -232,7 +235,8 @@ export default function TradeForm({
       console.log('Validation errors:', validationErrors);
       const errorMap: Record<string, string> = {};
       validationErrors.forEach(err => {
-        errorMap[err.field] = err.message;
+        // Use localized generic error message for basic validations
+        errorMap[err.field] = t('trade.validation_error');
       });
       setErrors(errorMap);
       return;
@@ -254,7 +258,7 @@ export default function TradeForm({
         {/* Toggle for Expired Option */}
         <Box mb={2}>
           <Switch 
-            label="Expired Option" 
+            label={t('trade.expired_option')} 
             checked={isExpired}
             onCheckedChange={(details) => {
               setIsExpired(details.checked);
@@ -273,7 +277,7 @@ export default function TradeForm({
         {/* Row 1: Stock Symbol, Option Type */}
         <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} w="full">
           <StockSelect
-            label="Stock Symbol"
+            label={t('trade.stock_symbol')}
             value={formData.stock_symbol}
             onSelect={(stock) => {
               setFormData(prev => ({ 
@@ -293,11 +297,11 @@ export default function TradeForm({
             required
           />
           <Select
-            label="Option Type"
+            label={t('trade.option_type')}
             options={OPTION_TYPE_OPTIONS}
             value={formData.option_type}
             onChange={(e) => handleChange('option_type', e.target.value)}
-            placeholder="Select type"
+            placeholder={t('trade.select_type')}
             error={errors.option_type}
             required
           />
@@ -307,13 +311,13 @@ export default function TradeForm({
         <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} w="full">
           {isExpired ? (
             <Input
-              label="Expiration Date"
+              label={t('trade.expiration_date')}
               type="date"
               value={formData.expiry_date}
               onChange={(e) => {
                 const date = e.target.value;
                 if (isWeekend(date)) {
-                  setErrors(prev => ({ ...prev, expiry_date: 'Cannot select weekends (Sat/Sun)' }));
+                  setErrors(prev => ({ ...prev, expiry_date: t('trade.weekend_error') }));
                 } else {
                   setErrors(prev => ({ ...prev, expiry_date: '' }));
                 }
@@ -324,11 +328,11 @@ export default function TradeForm({
             />
           ) : (
             <Select
-              label="Expiration Date"
+              label={t('trade.expiration_date')}
               options={expirationDates.map(d => ({ value: d.strikeTime, label: d.strikeTime }))}
               value={formData.expiry_date}
               onChange={(e) => handleChange('expiry_date', e.target.value)}
-              placeholder={loadingExpiries ? 'Loading...' : 'Select expiry'}
+              placeholder={loadingExpiries ? t('common.loading') : t('trade.select_expiry')}
               error={errors.expiry_date}
               required
               disabled={!formData.stock_symbol || loadingExpiries}
@@ -337,7 +341,7 @@ export default function TradeForm({
 
           {isExpired ? (
             <Input
-              label="Strike Price"
+              label={t('trade.strike_price')}
               type="number"
               step="0.01"
               value={formData.strike_price}
@@ -348,7 +352,7 @@ export default function TradeForm({
             />
           ) : (
             <Select
-              label="Strike Price"
+              label={t('trade.strike_price')}
               options={optionList
                 .filter(item => {
                   const typeNum = formData.option_type === 'Call' ? 1 : 2;
@@ -372,7 +376,7 @@ export default function TradeForm({
                   if (errors.futu_code) setErrors(prev => ({ ...prev, futu_code: '' }));
                 }
               }}
-              placeholder={loadingOptions ? 'Loading options...' : 'Select strike'}
+              placeholder={loadingOptions ? t('trade.loading_options') : t('trade.select_strike')}
               error={errors.futu_code || errors.strike_price}
               required
               disabled={!formData.expiry_date || !formData.option_type || loadingOptions}
@@ -383,16 +387,16 @@ export default function TradeForm({
         {/* Row 3: Direction, Trade Date */}
         <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} w="full">
           <Select
-            label="Direction"
+            label={t('trade.direction')}
             options={DIRECTION_OPTIONS}
             value={formData.direction}
             onChange={(e) => handleChange('direction', e.target.value)}
-            placeholder="Select direction"
+            placeholder={t('trade.select_direction')}
             error={errors.direction}
             required
           />
           <Input
-            label="Trade Date"
+            label={t('trade.trade_date')}
             type="date"
             value={formData.trade_date}
             onChange={(e) => {
@@ -401,7 +405,7 @@ export default function TradeForm({
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 if (new Date(date) >= today) {
-                  setErrors(prev => ({ ...prev, trade_date: 'Trade date must be before today for expired options' }));
+                  setErrors(prev => ({ ...prev, trade_date: t('trade.date_error_expired') }));
                 } else {
                   setErrors(prev => ({ ...prev, trade_date: '' }));
                 }
@@ -416,7 +420,7 @@ export default function TradeForm({
         {/* Row 4: Premium, Contract */}
         <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} w="full">
           <Input
-            label="Premium (HKD/share)"
+            label={t('trade.premium_label')}
             type="number"
             step="0.0001"
             min="0"
@@ -427,7 +431,7 @@ export default function TradeForm({
             required
           />
           <Input
-            label="Contracts"
+            label={t('trade.contracts_label')}
             type="number"
             min="1"
             step="1"
@@ -443,13 +447,13 @@ export default function TradeForm({
         {totalPremium > 0 && (
           <Box w="full" p={3} bg="bg.muted" borderRadius="lg" borderWidth="1px" borderColor="border.default">
             <Flex justifyContent="space-between" alignItems="center">
-              <Text fontSize="sm" color="fg.muted">Total Premium:</Text>
+              <Text fontSize="sm" color="fg.muted">{t('trade.total_premium')}</Text>
               <Text fontSize="lg" fontWeight="semibold" color="green.400">
                 HKD {totalPremium.toLocaleString('en-HK', { minimumFractionDigits: 2 })}
               </Text>
             </Flex>
             <Text fontSize="xs" color="fg.subtle" mt={1}>
-              {premium} × {contracts} contracts × {formData.shares_per_contract} shares
+              {premium} × {contracts} {t('trade.contracts_label').toLowerCase()} × {formData.shares_per_contract} {t('exposure.shares_unit').toLowerCase()}
             </Text>
           </Box>
         )}
@@ -457,7 +461,7 @@ export default function TradeForm({
         {/* Row 5: Fee and Margin */}
         <SimpleGrid columns={{ base: 1, md: 2 }} gap={4} w="full">
           <Input
-            label="Fee (HKD)"
+            label={t('trade.fee_label')}
             type="number"
             step="0.01"
             min="0"
@@ -467,7 +471,7 @@ export default function TradeForm({
             error={errors.fee}
           />
           <Input
-            label="Margin %"
+            label={t('trade.margin_label')}
             type="number"
             step="0.1"
             min="0"
@@ -482,11 +486,11 @@ export default function TradeForm({
         <Flex justifyContent="flex-end" gap={3} mt={4}>
           {onCancel && (
             <Button type="button" variant="secondary" onClick={onCancel} disabled={isLoading}>
-              Cancel
+              {t('common.cancel')}
             </Button>
           )}
           <Button type="submit" isLoading={isLoading}>
-            Open Trade
+            {initialData ? t('trade.save_changes') : t('trade.open_trade')}
           </Button>
         </Flex>
       </VStack>

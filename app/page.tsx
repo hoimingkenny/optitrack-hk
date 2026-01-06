@@ -21,8 +21,10 @@ import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import { toast } from '@/components/ui/Toast';
 import { formatHKD, formatPNL } from '@/utils/helpers/pnl-calculator';
+import { useLanguage } from '@/components/providers/LanguageProvider';
 
 export default function Home() {
+  const { t, language } = useLanguage();
   // Auth state
   const [user, setUser] = useState<User | null>(null);
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
@@ -51,13 +53,13 @@ export default function Home() {
     const daysToYearEnd = Math.ceil((endOfYear.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 
     return [
-      { value: 'all', label: 'All Time' },
-      { value: 'end_of_month', label: `End of Current Month (${daysToMonthEnd}d)` },
-      { value: 'end_of_next_month', label: `End of Next Month (${daysToNextMonthEnd}d)` },
-      { value: 'end_of_next_next_month', label: `End of Next Next Month (${daysToNextNextMonthEnd}d)` },
-      { value: 'end_of_year', label: `End of Current Year (${daysToYearEnd}d)` },
+      { value: 'all', label: t('page.time_all') },
+      { value: 'end_of_month', label: `${t('page.time_end_month')} (${daysToMonthEnd}d)` },
+      { value: 'end_of_next_month', label: `${t('page.time_end_next_month')} (${daysToNextMonthEnd}d)` },
+      { value: 'end_of_next_next_month', label: `${t('page.time_end_next_next_month')} (${daysToNextNextMonthEnd}d)` },
+      { value: 'end_of_year', label: `${t('page.time_end_year')} (${daysToYearEnd}d)` },
     ];
-  }, []);
+  }, [t]);
 
   // Check auth state on mount
   useEffect(() => {
@@ -99,11 +101,11 @@ export default function Home() {
       setOptions(data.options);
     } catch (error) {
       console.error('Error loading options:', error);
-      toast.error('Failed to load options');
+      toast.error(t('common.error'));
     } finally {
       setOptionsLoading(false);
     }
-  }, [user]);
+  }, [user, t]);
 
   useEffect(() => {
     if (user) {
@@ -119,13 +121,13 @@ export default function Home() {
     try {
       if (authMode === 'login') {
         await signIn(email, password);
-        toast.success('Welcome back!');
+        toast.success(t('auth.welcome_back'));
       } else {
         await signUp(email, password);
-        toast.success('Account created! Please check your email to verify.');
+        toast.success(t('auth.account_created'));
       }
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Authentication failed';
+      const errorMessage = error instanceof Error ? error.message : t('page.auth_fail');
       setAuthError(errorMessage);
     } finally {
       setAuthLoading(false);
@@ -136,9 +138,9 @@ export default function Home() {
     try {
       await signOut();
       setOptions([]);
-      toast.info('Signed out successfully');
+      toast.info(t('auth.sign_out_success'));
     } catch {
-      toast.error('Failed to sign out');
+      toast.error(t('auth.sign_out_fail'));
     }
   };
 
@@ -184,14 +186,14 @@ export default function Home() {
       
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to create option');
+        throw new Error(error.error || t('page.create_option_fail'));
       }
       
-      toast.success('Option opened successfully!');
+      toast.success(t('page.option_opened_success'));
       setShowNewTradeForm(false);
       await loadOptions();
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create option';
+      const errorMessage = error instanceof Error ? error.message : t('page.create_option_fail');
       toast.error(errorMessage);
     } finally {
       setFormLoading(false);
@@ -218,7 +220,7 @@ export default function Home() {
       <Center minH="100vh">
         <VStack>
           <Spinner size="xl" color="brand.500" borderWidth="4px" />
-          <Text color="fg.muted">Loading...</Text>
+          <Text color="fg.muted">{t('common.loading')}</Text>
         </VStack>
       </Center>
     );
@@ -231,7 +233,7 @@ export default function Home() {
         <Box w="full" maxW="md">
           <VStack textAlign="center" mb={8}>
             <Text fontSize="3xl" fontWeight="bold" color="fg.default">📈 OptiTrack HK</Text>
-            <Text color="fg.muted">Hong Kong Stock Options Tracker</Text>
+            <Text color="fg.muted">{t('page.hk_tracker_subtitle')}</Text>
           </VStack>
           <AuthForm
             mode={authMode}
@@ -255,9 +257,9 @@ export default function Home() {
           {/* Header */}
           <Flex alignItems="center" justifyContent="space-between" mb={6}>
             <Box>
-              <Text fontSize="2xl" fontWeight="bold" color="fg.default">Dashboard</Text>
+              <Text fontSize="2xl" fontWeight="bold" color="fg.default">{t('page.dashboard_title')}</Text>
               <Text color="fg.muted" fontSize="sm">
-                {new Date().toLocaleDateString('en-HK', { 
+                {new Date().toLocaleDateString(language === 'zh' ? 'zh-HK' : 'en-HK', { 
                   weekday: 'long', 
                   year: 'numeric', 
                   month: 'long', 
@@ -266,7 +268,7 @@ export default function Home() {
               </Text>
             </Box>
             <Button onClick={() => setShowNewTradeForm(true)}>
-              + New Option
+              {t('page.new_option_btn')}
             </Button>
           </Flex>
 
@@ -274,7 +276,7 @@ export default function Home() {
           <Modal
             isOpen={showNewTradeForm}
             onClose={() => setShowNewTradeForm(false)}
-            title="New Option"
+            title={t('page.new_option_modal')}
             size="xl"
           >
             <TradeForm
@@ -289,7 +291,7 @@ export default function Home() {
             <Center py={12}>
               <VStack gap={2}>
                 <Spinner size="lg" color="brand.500" borderWidth="4px" />
-                <Text color="fg.muted">Loading options...</Text>
+                <Text color="fg.muted">{t('page.loading_options')}</Text>
               </VStack>
             </Center>
           ) : options.length > 0 ? (
@@ -305,7 +307,7 @@ export default function Home() {
                   borderWidth="1px" 
                   borderColor="border.default"
                 >
-                  <Text fontSize="sm" color="fg.muted" mb={2}>Open Positions</Text>
+                  <Text fontSize="sm" color="fg.muted" mb={2}>{t('dashboard.open_positions')}</Text>
                   <Text fontSize="3xl" fontWeight="bold" color="blue.400">
                     {openOptionsCount}
                   </Text>
@@ -321,7 +323,7 @@ export default function Home() {
                   borderWidth="1px" 
                   borderColor="border.default"
                 >
-                  <Text fontSize="sm" color="fg.muted" mb={2}>Total PNL</Text>
+                  <Text fontSize="sm" color="fg.muted" mb={2}>{t('dashboard.total_pnl')}</Text>
                   <Text 
                     fontSize="3xl" 
                     fontWeight="bold" 
@@ -341,7 +343,7 @@ export default function Home() {
                   borderWidth="1px" 
                   borderColor="border.default"
                 >
-                  <Text fontSize="sm" color="fg.muted" mb={2}>Total Covering Cash</Text>
+                  <Text fontSize="sm" color="fg.muted" mb={2}>{t('dashboard.total_covering_cash')}</Text>
                   <Text fontSize="3xl" fontWeight="bold" color="#D73535">
                     {formatHKD(totalCoveringCash)}
                   </Text>
@@ -355,12 +357,12 @@ export default function Home() {
               <Box mt={8}>
                 <Flex justifyContent="space-between" alignItems="flex-end" mb={4}>
                   <VStack align="start" gap={1}>
-                    <Heading size="md" color="fg.default">Exposure Analysis</Heading>
-                    <Text fontSize="xs" color="fg.muted">Concentrated risk by expiry milestone</Text>
+                    <Heading size="md" color="fg.default">{t('page.exposure_analysis')}</Heading>
+                    <Text fontSize="xs" color="fg.muted">{t('page.concentrated_risk')}</Text>
                   </VStack>
                   <Box w="240px">
                     <Text fontSize="xs" fontWeight="medium" color="fg.muted" mb={1} textAlign="right">
-                      Risk Horizon
+                      {t('page.risk_horizon')}
                     </Text>
                     <Select
                       options={TIME_RANGE_OPTIONS}
@@ -379,10 +381,10 @@ export default function Home() {
             <Center py={12} bg="bg.surface" borderRadius="xl" borderWidth="1px" borderColor="border.default">
               <VStack gap={4}>
                 <Text color="fg.muted" mb={0}>
-                  No options yet. Create your first option to get started!
+                  {t('page.no_options_empty')}
                 </Text>
                 <Button onClick={() => setShowNewTradeForm(true)}>
-                  Create First Option
+                  {t('page.create_first_btn')}
                 </Button>
               </VStack>
             </Center>

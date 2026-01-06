@@ -25,9 +25,11 @@ import { User } from '@supabase/supabase-js';
 import Modal from '@/components/ui/Modal';
 import TradeForm from '@/components/trades/TradeForm';
 import { CreateOptionWithTradeInput } from '@/db/schema';
+import { useLanguage } from '@/components/providers/LanguageProvider';
 
 export default function FutuOptionsPage() {
   const router = useRouter();
+  const { t } = useLanguage();
   const [user, setUser] = useState<User | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
@@ -80,13 +82,13 @@ export default function FutuOptionsPage() {
       await supabase.auth.signOut();
       router.push('/');
       toaster.create({
-        title: 'Signed out successfully',
+        title: t('auth.sign_out_success'),
         type: 'info'
       });
     } catch (error) {
       console.error('Sign out error:', error);
       toaster.create({
-        title: 'Failed to sign out',
+        title: t('auth.sign_out_fail'),
         type: 'error'
       });
     }
@@ -173,13 +175,13 @@ export default function FutuOptionsPage() {
       }
       
       toaster.create({
-        title: 'Option logged successfully!',
+        title: t('futu.option_logged_success'),
         type: 'success'
       });
       setShowLogModal(false);
     } catch (error: any) {
       toaster.create({
-        title: error.message || 'Failed to create option',
+        title: error.message || t('page.create_option_fail'),
         type: 'error'
       });
     } finally {
@@ -231,7 +233,7 @@ export default function FutuOptionsPage() {
     const searchSymbol = typeof overrideSymbol === 'string' ? overrideSymbol : symbol;
     if (!searchSymbol) {
       toaster.create({
-        title: 'Please enter a stock symbol',
+        title: t('futu.enter_symbol_error'),
         type: 'error'
       });
       return;
@@ -255,14 +257,14 @@ export default function FutuOptionsPage() {
           const errMsg = quoteData.error || 'Price not available';
           console.error('Quote fetch failed:', errMsg);
           toaster.create({
-            title: `Quote fetch failed: ${errMsg}`,
+            title: t('futu.quote_fetch_fail').replace('{error}', errMsg),
             type: 'warning'
           });
         }
       } catch (e: any) {
         console.error('Failed to fetch quote', e);
         toaster.create({
-          title: `Failed to fetch quote: ${e.message}`,
+          title: t('futu.quote_fetch_fail').replace('{error}', e.message),
           type: 'error'
         });
       }
@@ -272,7 +274,7 @@ export default function FutuOptionsPage() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to fetch data');
+        throw new Error(result.error || t('common.error'));
       }
 
       setData(result);
@@ -281,7 +283,7 @@ export default function FutuOptionsPage() {
         handleFetchChain(result[0].strikeTime, searchSymbol);
       } else {
         toaster.create({
-          title: 'No option expiration dates found for this symbol.',
+          title: t('futu.no_expirations'),
           type: 'info'
         });
       }
@@ -311,13 +313,13 @@ export default function FutuOptionsPage() {
         const result = await response.json();
         
         if (!response.ok) {
-            throw new Error(result.error || 'Failed to fetch option chain');
+            throw new Error(result.error || t('common.error'));
         }
         
         setChainData(result);
         if (result.length === 0) {
             toaster.create({
-                title: `No option chain data found for ${date}`,
+                title: t('futu.no_chain_data').replace('{date}', date),
                 type: 'info'
             });
         }
@@ -397,7 +399,7 @@ export default function FutuOptionsPage() {
         <Center h="full">
           <VStack gap={4}>
             <Spinner size="xl" color="brand.500" />
-            <Text color="fg.muted" fontWeight="medium">Loading your dashboard...</Text>
+            <Text color="fg.muted" fontWeight="medium">{t('futu.loading_dashboard')}</Text>
           </VStack>
         </Center>
       </Box>
@@ -417,7 +419,7 @@ export default function FutuOptionsPage() {
                   <HStack gap={2}>
                     <Box position="relative" width="200px" onClick={(e) => e.stopPropagation()}>
                       <Input
-                        placeholder="e.g. 00700"
+                        placeholder={t('futu.search_placeholder')}
                         value={symbol}
                         onChange={handleInputChange}
                         onFocus={() => {
@@ -466,7 +468,7 @@ export default function FutuOptionsPage() {
                       size="sm"
                       colorPalette="blue"
                     >
-                      Search
+                      {t('futu.search_btn')}
                     </Button>
                   </HStack>
 
@@ -482,7 +484,7 @@ export default function FutuOptionsPage() {
                           borderRadius={0}
                           px={4}
                         >
-                          Call
+                          {t('futu.call')}
                         </Button>
                         <Button
                           size="sm"
@@ -495,7 +497,7 @@ export default function FutuOptionsPage() {
                           borderLeft="1px solid"
                           borderColor="border.default"
                         >
-                          Put
+                          {t('futu.put')}
                         </Button>
                       </HStack>
                     </HStack>
@@ -511,7 +513,7 @@ export default function FutuOptionsPage() {
                           borderRadius={0}
                           px={4}
                         >
-                          All
+                          {t('futu.all')}
                         </Button>
                         <Button
                           size="sm"
@@ -524,7 +526,7 @@ export default function FutuOptionsPage() {
                           borderLeft="1px solid"
                           borderColor="border.default"
                         >
-                          ITM
+                          {t('futu.itm')}
                         </Button>
                         <Button
                           size="sm"
@@ -537,7 +539,7 @@ export default function FutuOptionsPage() {
                           borderLeft="1px solid"
                           borderColor="border.default"
                         >
-                          OTM
+                          {t('futu.otm')}
                         </Button>
                       </HStack>
                     </HStack>
@@ -603,16 +605,16 @@ export default function FutuOptionsPage() {
                   <Table.Root size="sm" variant="outline" stickyHeader striped>
                     <Table.Header>
                       <Table.Row bg="bg.muted">
-                        <Table.ColumnHeader width="120px" bg="bg.muted" fontWeight="bold">Strike (行權價)</Table.ColumnHeader>
-                        <Table.ColumnHeader textAlign="right" bg="bg.muted">Last Premium</Table.ColumnHeader>
-                        <Table.ColumnHeader textAlign="right" bg="bg.muted">Bid</Table.ColumnHeader>
-                        <Table.ColumnHeader textAlign="right" bg="bg.muted">Ask</Table.ColumnHeader>
-                        <Table.ColumnHeader textAlign="right" bg="bg.muted">Vol</Table.ColumnHeader>
-                        <Table.ColumnHeader textAlign="right" bg="bg.muted">OI</Table.ColumnHeader>
-                        <Table.ColumnHeader textAlign="right" bg="bg.muted">Delta</Table.ColumnHeader>
-                        <Table.ColumnHeader bg="bg.muted">Type</Table.ColumnHeader>
-                        <Table.ColumnHeader bg="bg.muted">Code</Table.ColumnHeader>
-                        <Table.ColumnHeader bg="bg.muted" width="80px">Action</Table.ColumnHeader>
+                        <Table.ColumnHeader width="120px" bg="bg.muted" fontWeight="bold">{t('futu.strike')}</Table.ColumnHeader>
+                        <Table.ColumnHeader textAlign="right" bg="bg.muted">{t('futu.last_premium')}</Table.ColumnHeader>
+                        <Table.ColumnHeader textAlign="right" bg="bg.muted">{t('futu.bid')}</Table.ColumnHeader>
+                        <Table.ColumnHeader textAlign="right" bg="bg.muted">{t('futu.ask')}</Table.ColumnHeader>
+                        <Table.ColumnHeader textAlign="right" bg="bg.muted">{t('futu.vol')}</Table.ColumnHeader>
+                        <Table.ColumnHeader textAlign="right" bg="bg.muted">{t('futu.oi')}</Table.ColumnHeader>
+                        <Table.ColumnHeader textAlign="right" bg="bg.muted">{t('futu.delta')}</Table.ColumnHeader>
+                        <Table.ColumnHeader bg="bg.muted">{t('futu.type')}</Table.ColumnHeader>
+                        <Table.ColumnHeader bg="bg.muted">{t('futu.code')}</Table.ColumnHeader>
+                        <Table.ColumnHeader bg="bg.muted" width="80px">{t('futu.action')}</Table.ColumnHeader>
                       </Table.Row>
                     </Table.Header>
                     <Table.Body>
@@ -622,7 +624,7 @@ export default function FutuOptionsPage() {
                           return (
                             <Table.Row key={`price-${index}`} bg="blue.50">
                               <Table.Cell colSpan={10} textAlign="center" fontWeight="bold" color="blue.600">
-                                Current Price: {typeof price === 'number' ? price.toFixed(3) : price}
+                                {t('futu.current_price').replace('{price}', typeof price === 'number' ? price.toFixed(3) : price)}
                               </Table.Cell>
                             </Table.Row>
                           );
@@ -674,7 +676,7 @@ export default function FutuOptionsPage() {
                                 variant="outline"
                                 onClick={() => handleLogTrade(item)}
                               >
-                                Log
+                                {t('futu.log_btn')}
                               </Button>
                             </Table.Cell>
                           </Table.Row>
@@ -685,11 +687,11 @@ export default function FutuOptionsPage() {
                 </Box>
               ) : selectedDate ? (
                 <Box py={20} textAlign="center" color="fg.muted">
-                  No option chain data available for this date.
+                  {t('futu.no_data_date')}
                 </Box>
               ) : (
                 <Box py={20} textAlign="center" color="fg.muted">
-                  Enter a symbol and click search to view the option chain.
+                  {t('futu.enter_symbol_hint')}
                 </Box>
               )}
             </Box>
@@ -701,7 +703,7 @@ export default function FutuOptionsPage() {
     <Modal
       isOpen={showLogModal}
       onClose={() => setShowLogModal(false)}
-      title="Log Option Trade"
+      title={t('futu.log_trade_modal')}
       size="xl"
     >
       <Box p={4}>
