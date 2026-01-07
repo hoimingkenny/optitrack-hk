@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
     // Defensive check for nested properties
     // In snapshots, the price is often curPrice or lastPrice
     let lastPrice = quote.basic ? toNumber(quote.basic.curPrice || quote.basic.lastPrice) : null;
+    const lastClosePrice = quote.basic ? toNumber(quote.basic.lastClosePrice) : null;
     const name = quote.basic ? quote.basic.name : 'Unknown';
 
     if (lastPrice === null || lastPrice === undefined) {
@@ -34,8 +35,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    let changePct = 0;
+    if (lastPrice !== null && lastClosePrice !== null && lastClosePrice !== 0) {
+      changePct = ((lastPrice - lastClosePrice) / lastClosePrice) * 100;
+    }
+
     return NextResponse.json({
       price: lastPrice,
+      lastClosePrice: lastClosePrice,
+      changePct: changePct,
       name: name,
       symbol: symbol
     });

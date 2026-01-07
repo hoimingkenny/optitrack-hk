@@ -38,6 +38,7 @@ export default function Home() {
   const [showNewTradeForm, setShowNewTradeForm] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [exposureTimeRange, setExposureTimeRange] = useState<string>('all');
+  const [hsiData, setHsiData] = useState<{ price: number; lastClosePrice: number; changePct: number } | null>(null);
 
   const TIME_RANGE_OPTIONS = useMemo(() => {
     const now = new Date();
@@ -110,8 +111,25 @@ export default function Home() {
   useEffect(() => {
     if (user) {
       loadOptions();
+      fetchHsi();
     }
   }, [user, loadOptions]);
+
+  const fetchHsi = async () => {
+    try {
+      const response = await fetch('/api/futu/quote?symbol=HK.800000');
+      if (response.ok) {
+        const data = await response.json();
+        setHsiData({
+          price: data.price,
+          lastClosePrice: data.lastClosePrice,
+          changePct: data.changePct
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching HSI:', error);
+    }
+  };
 
   // Auth handlers
   const handleAuth = async (email: string, password: string) => {
@@ -202,7 +220,11 @@ export default function Home() {
 
   // Calculate total PNL from all options
   const totalPNL = options.reduce((sum, option) => sum + option.total_pnl, 0);
-  const openOptionsCount = options.filter(o => o.status === 'Open').length;
+  const openOptions = options.filter(o => o.status === 'Open');
+  const openOptionsCount = openOptions.length;
+  
+  const sellCallCount = openOptions.filter(o => o.option_type === 'Call' && o.direction === 'Sell').length;
+  const sellPutCount = openOptions.filter(o => o.option_type === 'Put' && o.direction === 'Sell').length;
 
   // Calculate total covering cash for all open sell puts
   const totalCoveringCash = options.reduce((sum, option) => {
@@ -297,26 +319,90 @@ export default function Home() {
           ) : options.length > 0 ? (
             <Box mb={6}>
               <Flex gap={4} flexWrap="wrap" mb={6}>
-                {/* Open Positions */}
+                {/* HSI Index */}
                 <Box 
                   flex="1" 
-                  minW="200px"
+                  minW="240px"
                   bg="bg.surface" 
                   p={6} 
                   borderRadius="xl" 
                   borderWidth="1px" 
                   borderColor="border.default"
                 >
-                  <Text fontSize="sm" color="fg.muted" mb={2}>{t('dashboard.open_positions')}</Text>
-                  <Text fontSize="3xl" fontWeight="bold" color="blue.400">
-                    {openOptionsCount}
-                  </Text>
+                  <Flex justifyContent="space-between" alignItems="flex-start" mb={2}>
+                    <Text fontSize="sm" color="fg.muted">恆生指數 (HSI)</Text>
+                    {hsiData && (
+                      <Text 
+                        fontSize="xs" 
+                        fontWeight="bold" 
+                        px={2} 
+                        py={0.5} 
+                        borderRadius="full"
+                        bg={hsiData.changePct >= 0 ? "green.500/10" : "red.500/10"}
+                        color={hsiData.changePct >= 0 ? "green.500" : "red.500"}
+                      >
+                        {hsiData.changePct >= 0 ? "+" : ""}{hsiData.changePct.toFixed(2)}%
+                      </Text>
+                    )}
+                  </Flex>
+                  {hsiData ? (
+                    <VStack align="start" gap={0}>
+                      <Text fontSize="3xl" fontWeight="bold" color="fg.default">
+                        {hsiData.price.toLocaleString('en-HK', { minimumFractionDigits: 2 })}
+                      </Text>
+                      <Text fontSize="xs" color="fg.muted">
+                        昨收: {hsiData.lastClosePrice.toLocaleString('en-HK', { minimumFractionDigits: 2 })}
+                      </Text>
+                    </VStack>
+                  ) : (
+                    <Spinner size="sm" />
+                  )}
+                </Box>
+
+                {/* Positions & Covering Cash Combined */}
+                <Box 
+                  flex="1" 
+                  minW="240px"
+                  bg="bg.surface" 
+                  p={6} 
+                  borderRadius="xl" 
+                  borderWidth="1px" 
+                  borderColor="border.default"
+                >
+                  <VStack align="start" gap={4}>
+                    <Box w="full">
+                      <Text fontSize="sm" color="fg.muted" mb={1}>{t('dashboard.open_positions')}</Text>
+                      <Flex alignItems="baseline" gap={4}>
+                        <Text fontSize="3xl" fontWeight="bold" color="blue.400">
+                          {openOptionsCount}
+                        </Text>
+                        <Flex gap={3} fontSize="xs" fontWeight="medium">
+                          <Flex align="center" gap={1}>
+                            <Box w={2} h={2} borderRadius="full" bg="orange.400" />
+                            <Text color="fg.muted">賣出認購期權:</Text>
+                            <Text color="orange.400">{sellCallCount}</Text>
+                          </Flex>
+                          <Flex align="center" gap={1}>
+                            <Box w={2} h={2} borderRadius="full" bg="pink.400" />
+                            <Text color="fg.muted">賣出認沽期權:</Text>
+                            <Text color="pink.400">{sellPutCount}</Text>
+                          </Flex>
+                        </Flex>
+                      </Flex>
+                    </Box>
+                    <Box w="full" pt={4} borderTopWidth="1px" borderColor="border.default">
+                      <Text fontSize="sm" color="fg.muted" mb={1}>{t('dashboard.total_covering_cash')}</Text>
+                      <Text fontSize="2xl" fontWeight="bold" color="#D73535">
+                        {formatHKD(totalCoveringCash)}
+                      </Text>
+                    </Box>
+                  </VStack>
                 </Box>
 
                 {/* Total PNL */}
                 <Box 
                   flex="1" 
-                  minW="200px"
+                  minW="240px"
                   bg="bg.surface" 
                   p={6} 
                   borderRadius="xl" 
@@ -330,22 +416,6 @@ export default function Home() {
                     color={totalPNL > 0 ? 'green.400' : totalPNL < 0 ? 'red.400' : 'fg.default'}
                   >
                     {formatPNL(totalPNL)}
-                  </Text>
-                </Box>
-
-                {/* Total Covering Cash */}
-                <Box 
-                  flex="1" 
-                  minW="200px"
-                  bg="bg.surface" 
-                  p={6} 
-                  borderRadius="xl" 
-                  borderWidth="1px" 
-                  borderColor="border.default"
-                >
-                  <Text fontSize="sm" color="fg.muted" mb={2}>{t('dashboard.total_covering_cash')}</Text>
-                  <Text fontSize="3xl" fontWeight="bold" color="#D73535">
-                    {formatHKD(totalCoveringCash)}
                   </Text>
                 </Box>
               </Flex>
