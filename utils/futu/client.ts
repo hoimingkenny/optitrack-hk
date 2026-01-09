@@ -116,13 +116,22 @@ export class FutuClient {
 
     if (!securities || securities.length === 0) return [];
 
+    // Filter out any invalid securities to prevent protobuf encoding errors
+    const validSecurities = securities.filter(s => s && typeof s.code === 'string' && s.code.length > 0);
+    
+    if (validSecurities.length === 0) {
+      console.warn('[FutuClient] No valid securities provided for snapshot');
+      return [];
+    }
+
     const req = {
       c2s: {
-        securityList: securities,
+        securityList: validSecurities,
       },
     };
 
     try {
+      console.log(`[FutuClient] Fetching snapshots for ${validSecurities.length} securities...`);
       const res = await this.websocket.GetSecuritySnapshot(req);
       if (res.retType !== 0) {
         console.error('[FutuClient] GetSecuritySnapshot API error:', res.retMsg);
@@ -435,27 +444,36 @@ export default globalClient;
 function getMarketFromSymbol(symbol: string): number {
   if (!symbol) return Qot_Common.QotMarket.QotMarket_HK_Security;
   
-  const s = symbol.toUpperCase();
+  const s = symbol.toUpperCase().trim();
   
-  // Handle HK.00700 or 00700.HK
-  if (s.startsWith('HK.') || s.endsWith('.HK')) {
+  // Special case for Option codes (e.g. HKB260129C70000)
+  if (/^[A-Z]{2,5}\d{6}[CP]\d+$/.test(s)) {
     return Qot_Common.QotMarket.QotMarket_HK_Security;
   }
-  if (s.startsWith('US.') || s.endsWith('.US')) {
-    return Qot_Common.QotMarket.QotMarket_US_Security;
+
+  const parts = s.split('.');
+  
+  // Try to find market from parts
+  let marketStr = '';
+  if (parts.length > 1) {
+    const marketPrefixes = ['HK', 'US', 'SH', 'SZ'];
+    if (marketPrefixes.includes(parts[0])) marketStr = parts[0];
+    else if (marketPrefixes.includes(parts[1])) marketStr = parts[1];
+  } else {
+    // No dot, check if it starts or ends with market strings
+    if (s.startsWith('HK')) marketStr = 'HK';
+    else if (s.startsWith('US')) marketStr = 'US';
+    else if (s.endsWith('HK')) marketStr = 'HK';
+    else if (s.endsWith('US')) marketStr = 'US';
   }
-  // Also check if it's just a 5-digit code or includes HK/US in any way
-  if (s.includes('HK')) return Qot_Common.QotMarket.QotMarket_HK_Security;
-  if (s.includes('US')) return Qot_Common.QotMarket.QotMarket_US_Security;
-  if (s.startsWith('SH.') || s.endsWith('.SH')) {
-    return Qot_Common.QotMarket.QotMarket_SH_Security;
-  }
-  if (s.startsWith('SZ.') || s.endsWith('.SZ')) {
-    return Qot_Common.QotMarket.QotMarket_SZ_Security;
-  }
+
+  if (marketStr === 'HK') return Qot_Common.QotMarket.QotMarket_HK_Security;
+  if (marketStr === 'US') return Qot_Common.QotMarket.QotMarket_US_Security;
+  if (marketStr === 'SH') return Qot_Common.QotMarket.QotMarket_SH_Security;
+  if (marketStr === 'SZ') return Qot_Common.QotMarket.QotMarket_SZ_Security;
   
   // Guess based on format if no prefix/suffix
-  if (/^\d+$/.test(symbol)) {
+  if (/^\d+$/.test(s.replace(/[^0-9]/g, ''))) {
     return Qot_Common.QotMarket.QotMarket_HK_Security;
   }
   return Qot_Common.QotMarket.QotMarket_US_Security;
@@ -464,31 +482,33 @@ function getMarketFromSymbol(symbol: string): number {
 function getCodeFromSymbol(symbol: string): string {
   if (!symbol) return '';
   
-  // Clean up symbol first
-  let s = symbol.toUpperCase().trim();
-  
-  const marketPrefixes = ['HK', 'US', 'SH', 'SZ'];
+  const s = symbol.toUpperCase().trim();
+
+  // Special case for Option codes (e.g. HKB260129C70000)
+  if (/^[A-Z]{2,5}\d{6}[CP]\d+$/.test(s)) {
+    return s;
+  }
+
   const parts = s.split('.');
   
   if (parts.length > 1) {
-    // Check which part is the market and return the other
+    const marketPrefixes = ['HK', 'US', 'SH', 'SZ'];
+    // If one part is market, return the other
     if (marketPrefixes.includes(parts[0])) return parts[1];
     if (marketPrefixes.includes(parts[1])) return parts[0];
-    
-    // Fallback for numeric vs non-numeric
-    if (/^\d+$/.test(parts[0]) && !/^\d+$/.test(parts[1])) return parts[0];
-    if (/^\d+$/.test(parts[1]) && !/^\d+$/.test(parts[0])) return parts[1];
-    
+    // If no market prefix found but has dot, return first part as code
     return parts[0];
   }
   
-  // If no dot, just remove market strings if they exist at start/end
+  // If no dot, remove market strings from start/end
+  let code = s;
+  const marketPrefixes = ['HK', 'US', 'SH', 'SZ'];
   marketPrefixes.forEach(m => {
-    if (s.startsWith(m)) s = s.substring(m.length);
-    if (s.endsWith(m)) s = s.substring(0, s.length - m.length);
+    if (code.startsWith(m)) code = code.substring(m.length);
+    if (code.endsWith(m)) code = code.substring(0, code.length - m.length);
   });
   
-  return s.replace(/[^0-9A-Z]/g, ''); // Final cleanup
+  return code.replace(/[^0-9A-Z]/g, '');
 }
 
 export async function getOptionExpirationDates(symbol: string): Promise<OptionExpirationDate[]> {
@@ -523,17 +543,27 @@ export async function getQuote(symbol: string) {
   const market = getMarketFromSymbol(symbol);
   const code = getCodeFromSymbol(symbol);
   
+  if (!code) {
+    console.warn(`[FutuClient] Could not parse code from symbol: ${symbol}`);
+    return null;
+  }
+  
   const snapshots = await globalClient.getSecuritySnapshots([{ market, code }]);
   return snapshots.length > 0 ? snapshots[0] : null;
 }
 
 export async function getSnapshots(symbols: string[]) {
-  if (!symbols || symbols.length === 0) return [];
+  if (!symbols || !Array.isArray(symbols) || symbols.length === 0) return [];
   
-  const securities = symbols.map(s => ({
-    market: getMarketFromSymbol(s),
-    code: getCodeFromSymbol(s)
-  }));
+  const securities = symbols
+    .filter(s => s && typeof s === 'string' && s.trim().length > 0)
+    .map(s => ({
+      market: getMarketFromSymbol(s),
+      code: getCodeFromSymbol(s)
+    }))
+    .filter(s => s.code && s.code.length > 0);
+  
+  if (securities.length === 0) return [];
   
   return globalClient.getSecuritySnapshots(securities);
 }

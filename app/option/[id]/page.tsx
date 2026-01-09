@@ -41,7 +41,17 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
   const [isDeletingOption, setIsDeletingOption] = useState(false);
   
   // Live price state
-  const [livePrice, setLivePrice] = useState<number | null>(null);
+    const [livePrice, setLivePrice] = useState<number | null>(null);
+    const [stockPrice, setStockPrice] = useState<number | null>(null);
+    const [greeks, setGreeks] = useState<{
+    delta?: number;
+    gamma?: number;
+    vega?: number;
+    theta?: number;
+    rho?: number;
+    iv?: number;
+    oi?: number;
+  } | null>(null);
 
   // Resolve params
   useEffect(() => {
@@ -52,49 +62,109 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
   useEffect(() => {
     if (!optionData || optionData.status !== 'Open') return;
     
-    let symbol = optionData.futu_code;
-    
-    // If no futu_code, we can't fetch snapshot easily. 
-    // We rely on it being saved during creation.
-    if (!symbol) return;
-    
-    // Ensure market prefix if missing (e.g. "TCH..." -> "HK.TCH...")
-    if (!symbol.includes('.')) {
-         // Heuristic: check stock symbol
-         if (optionData.stock_symbol.includes('HK') || /^\d+$/.test(optionData.stock_symbol)) {
-             symbol = `HK.${symbol}`;
-         } else if (optionData.stock_symbol.includes('US')) {
-             symbol = `US.${symbol}`;
-         }
-    }
+    // Standardize symbol format to MARKET.CODE (e.g. HK.09988)
+    const standardizeSymbol = (s: string | null | undefined, defaultMarket = 'HK') => {
+        if (!s) return '';
+        let val = s.toUpperCase().trim();
+        const parts = val.split('.');
+        
+        if (parts.length === 2) {
+            const marketPrefixes = ['HK', 'US', 'SH', 'SZ'];
+            const [p1, p2] = parts;
+            // If it's 09988.HK -> HK.09988
+            if (marketPrefixes.includes(p2)) return `${p2}.${p1.padStart(p2 === 'HK' ? 5 : 0, '0')}`;
+            // If it's HK.09988 -> HK.09988
+            if (marketPrefixes.includes(p1)) return `${p1}.${p2.padStart(p1 === 'HK' ? 5 : 0, '0')}`;
+        }
+        
+        // If no market prefix, add default
+        if (/^\d+$/.test(val)) {
+            return `${defaultMarket}.${val.padStart(5, '0')}`;
+        }
+        return val;
+    };
 
-    const fetchPrice = async () => {
+    const optionSymbol = optionData.futu_code;
+    const stockSymbol = standardizeSymbol(optionData.stock_symbol);
+
+    const fetchPrices = async () => {
       try {
+        const symbols = [];
+        if (optionSymbol) symbols.push(optionSymbol);
+        if (stockSymbol) symbols.push(stockSymbol);
+
+        if (symbols.length === 0) return;
+
         const response = await fetch('/api/futu/snapshot', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ symbols: [symbol] })
+          body: JSON.stringify({ symbols })
         });
         
         if (response.ok) {
-          const data = await response.json();
-          if (data.snapshots && data.snapshots.length > 0) {
-            const snap = data.snapshots[0];
-            // Futu snapshot structure: basic.curPrice or basic.lastPrice
-            // We use cleanFutuObject in API so it should be number
-            const price = snap.basic?.curPrice || snap.basic?.lastPrice;
-            if (price) setLivePrice(price);
+            const data = await response.json();
+            
+            if (data.snapshots && data.snapshots.length > 0) {
+            // Map snapshots by standardized symbol
+            const snapMap: Record<string, any> = {};
+            data.snapshots.forEach((s: any) => {
+                const code = s.basic.security.code;
+                const market = s.basic.security.market;
+                
+                // Map by raw code (e.g. 00700 or HKB260226C127500)
+                snapMap[code] = s;
+                
+                // Map by standardized code (e.g. HK.00700)
+                const marketPrefix = market === 1 ? 'HK' : market === 2 ? 'US' : '';
+                if (marketPrefix) {
+                    snapMap[`${marketPrefix}.${code}`] = s;
+                }
+            });
+
+            // Find option price
+            const optSnap = optionSymbol ? snapMap[optionSymbol] : null;
+            const oPrice = optSnap?.basic?.curPrice || optSnap?.basic?.lastPrice;
+            if (oPrice) setLivePrice(oPrice);
+
+            // Update Greeks if available
+            if (optSnap?.optionExData) {
+                setGreeks({
+                    delta: optSnap.optionExData.delta,
+                    gamma: optSnap.optionExData.gamma,
+                    vega: optSnap.optionExData.vega,
+                    theta: optSnap.optionExData.theta,
+                    rho: optSnap.optionExData.rho,
+                    iv: optSnap.optionExData.impliedVolatility,
+                    oi: optSnap.optionExData.openInterest,
+                });
+            }
+
+            // Find stock price
+            const stSnap = stockSymbol ? snapMap[stockSymbol] : null;
+            const sPrice = stSnap?.basic?.curPrice || stSnap?.basic?.lastPrice;
+            if (sPrice) setStockPrice(sPrice);
           }
         }
       } catch (err) {
-        console.error('Error fetching live price:', err);
+        console.error('Error fetching live prices:', err);
       }
     };
 
-    fetchPrice();
-    // Poll every 5 seconds for real-time updates
-    const interval = setInterval(fetchPrice, 5000);
-    return () => clearInterval(interval);
+    fetchPrices();
+
+    // Only set interval if it's before 16:00 HK time
+    const now = new Date();
+    const currentHour = now.getHours();
+
+    let interval: NodeJS.Timeout | null = null;
+    if (currentHour < 16) {
+      // Poll every 30 seconds for real-time updates
+      interval = setInterval(fetchPrices, 30000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [optionData]);
 
   // Calculate live PNL
@@ -366,6 +436,48 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
     }
   };
 
+  // New Calculations: Breakeven Cost and Annualized Return
+  const { breakevenCost, annualizedReturn } = useMemo(() => {
+    if (!optionData || !optionData.summary) return { breakevenCost: null, annualizedReturn: null };
+
+    // 1. Breakeven Cost Calculation
+    // formula: (strike * shares) - netPremiumReceived
+    const strike = typeof optionData.strike_price === 'string' ? parseFloat(optionData.strike_price) : optionData.strike_price;
+    const netContracts = optionData.summary.netContracts;
+    const sharesPerContract = optionData.trades[0]?.shares_per_contract || 500;
+    const netPremiumReceived = optionData.summary.totalPremium || 0;
+    
+    let bCost = null;
+    if (netContracts > 0) {
+      bCost = (strike * netContracts * sharesPerContract) - netPremiumReceived;
+    }
+
+    // 2. Annualized Return Calculation
+    // formula: (Premium / Risk Capital) * (365 / Holding Days) * 100%
+    let annReturn = null;
+    if (optionData.direction === 'Sell' && netPremiumReceived > 0) {
+      const firstTradeDate = new Date(optionData.trades[0].trade_date);
+      const expiryDate = new Date(optionData.expiry_date);
+      
+      // Holding days from open to expiry (or today if expired)
+      const totalDays = Math.max(1, Math.ceil((expiryDate.getTime() - firstTradeDate.getTime()) / (1000 * 60 * 60 * 24)));
+      
+      // Risk Capital (Margin) - Default to cash secured (Strike * Shares) if not provided
+      const marginPercent = optionData.trades[0]?.margin_percent ? parseFloat(optionData.trades[0].margin_percent) : null;
+      let riskCapital = strike * netContracts * sharesPerContract; // Default: Cash secured
+      
+      if (marginPercent) {
+        riskCapital = riskCapital * (marginPercent / 100);
+      }
+      
+      if (riskCapital > 0) {
+        annReturn = (netPremiumReceived / riskCapital) * (365 / totalDays) * 100;
+      }
+    }
+
+    return { breakevenCost: bCost, annualizedReturn: annReturn };
+  }, [optionData]);
+
   const handleBack = () => {
     router.push('/trades');
   };
@@ -535,7 +647,7 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                   </Box>
 
                   <Box>
-                    <Text fontSize="sm" color="fg.muted" mb={1}>{t('detail.net_pnl')}</Text>
+                    <Text fontSize="sm" color="fg.muted" mb="1">{t('detail.net_pnl')}</Text>
                     <Text 
                       fontSize="2xl" 
                       fontWeight="bold" 
@@ -544,8 +656,87 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                       {formatPNL(displayNetPNL)}
                     </Text>
                   </Box>
+
+                  {/* Row 4: Metrics */}
+                  <Box>
+                    <Text fontSize="sm" color="fg.muted" mb="1">{t('detail.stock_price')}</Text>
+                    <Text fontSize="2xl" fontWeight="bold" color="fg.default">
+                      {stockPrice !== null ? formatHKD(stockPrice) : '-'}
+                    </Text>
+                  </Box>
+
+                  <Box>
+                    <Text fontSize="sm" color="fg.muted" mb="1">{t('detail.breakeven_cost')}</Text>
+                    <Text fontSize="2xl" fontWeight="bold" color="fg.default">
+                      {breakevenCost !== null ? formatHKD(breakevenCost) : '-'}
+                    </Text>
+                  </Box>
+
+                  <Box>
+                    <Text fontSize="sm" color="fg.muted" mb="1">{t('detail.annualized_return')}</Text>
+                    <Text fontSize="2xl" fontWeight="bold" color="blue.400">
+                      {annualizedReturn !== null ? `${annualizedReturn.toFixed(2)}%` : '-'}
+                    </Text>
+                  </Box>
                 </SimpleGrid>
               </Box>
+
+              {/* Option Details & Greeks */}
+              {greeks && (
+                <Box 
+                  bg="bg.surface" 
+                  borderRadius="xl" 
+                  borderWidth="1px" 
+                  borderColor="border.default"
+                  p={6}
+                >
+                  <Heading size="md" mb={4} color="fg.default">{t('detail.option_greeks') || 'Option Greeks & Details'}</Heading>
+                  <SimpleGrid columns={{ base: 2, md: 4, lg: 7 }} gap={4}>
+                    <Box>
+                      <Text fontSize="xs" color="fg.muted" mb={1}>IV</Text>
+                      <Text fontSize="md" fontWeight="bold" color="fg.default">
+                        {greeks.iv ? `${greeks.iv.toFixed(2)}%` : '-'}
+                      </Text>
+                    </Box>
+                    <Box>
+                      <Text fontSize="xs" color="fg.muted" mb={1}>Delta</Text>
+                      <Text fontSize="md" fontWeight="bold" color="fg.default">
+                        {greeks.delta ? greeks.delta.toFixed(4) : '-'}
+                      </Text>
+                    </Box>
+                    <Box>
+                      <Text fontSize="xs" color="fg.muted" mb={1}>Gamma</Text>
+                      <Text fontSize="md" fontWeight="bold" color="fg.default">
+                        {greeks.gamma ? greeks.gamma.toFixed(4) : '-'}
+                      </Text>
+                    </Box>
+                    <Box>
+                      <Text fontSize="xs" color="fg.muted" mb={1}>Vega</Text>
+                      <Text fontSize="md" fontWeight="bold" color="fg.default">
+                        {greeks.vega ? greeks.vega.toFixed(4) : '-'}
+                      </Text>
+                    </Box>
+                    <Box>
+                      <Text fontSize="xs" color="fg.muted" mb={1}>Theta</Text>
+                      <Text fontSize="md" fontWeight="bold" color="fg.default">
+                        {greeks.theta ? greeks.theta.toFixed(4) : '-'}
+                      </Text>
+                    </Box>
+                    <Box>
+                      <Text fontSize="xs" color="fg.muted" mb={1}>Rho</Text>
+                      <Text fontSize="md" fontWeight="bold" color="fg.default">
+                        {greeks.rho ? greeks.rho.toFixed(4) : '-'}
+                      </Text>
+                    </Box>
+                    <Box>
+                      <Text fontSize="xs" color="fg.muted" mb={1}>OI</Text>
+                      <Text fontSize="md" fontWeight="bold" color="fg.default">
+                        {greeks.oi ? greeks.oi.toLocaleString() : '-'}
+                      </Text>
+                    </Box>
+                  </SimpleGrid>
+                </Box>
+              )}
 
               {/* Trades History */}
               <Box 

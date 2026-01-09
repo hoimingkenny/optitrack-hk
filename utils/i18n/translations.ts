@@ -86,8 +86,8 @@ export const translations = {
     'heatmap.title': 'Option Expiration Heatmap',
     'heatmap.legend': 'Color Legend',
     'heatmap.no_expiry': 'No Expiry',
-    'heatmap.sell_put': '賣出認沽期權',
-    'heatmap.sell_call': '賣出認購期權',
+    'heatmap.sell_put': 'Sell Put',
+    'heatmap.sell_call': 'Sell Call',
     'heatmap.buy_call': 'Buy Call',
     'heatmap.buy_put': 'Buy Put',
     'heatmap.intensity_desc': 'Intensity (1-5+) increases with the number of options expiring on that date.',
@@ -220,6 +220,9 @@ export const translations = {
     'detail.realized_pnl': 'Realized PNL',
     'detail.unrealized_pnl': 'Unrealized PNL',
     'detail.net_pnl': 'Net PNL',
+    'detail.stock_price': 'Stock Price',
+    'detail.breakeven_cost': 'Breakeven Cost',
+    'detail.annualized_return': 'Annualized Return',
     'detail.trades_history': 'Trades History',
     'detail.no_trades': 'No trades yet',
     'detail.date': 'Date',
@@ -243,6 +246,7 @@ export const translations = {
     'detail.confirm_delete_option': 'Are you sure you want to delete this entire option and all its trades? This action cannot be undone.',
     'detail.option_deleted': 'Option deleted successfully',
     'detail.trade_updated': 'Trade updated successfully',
+    'detail.option_greeks': 'Option Greeks & Details',
   },
   zh: {
     // Nav
@@ -344,15 +348,15 @@ export const translations = {
     'heatmap.fri': '五',
 
     // Exposure Tables
-    'exposure.top5_sell_put': '前 5 大 賣出認沽期權 風險敞口 (接貨現金)',
-    'exposure.top5_sell_call': '前 5 大 賣出認購期權 風險敞口 (接貨股票)',
+    'exposure.top5_sell_put': '前 5 大 Sell Put 風險敞口 (接貨現金)',
+    'exposure.top5_sell_call': '前 5 大 Sell Call 風險敞口 (接貨股票)',
     'exposure.option_name': '期權名稱',
     'exposure.days': '天數',
     'exposure.net': '淨倉',
     'exposure.covering_cash': '接貨現金',
     'exposure.covering_shares': '接貨股票',
-    'exposure.no_sell_puts': '此週期內沒有未平倉的 賣出認沽期權',
-    'exposure.no_sell_calls': '此週期內沒有未平倉的 賣出認購期權',
+    'exposure.no_sell_puts': '此週期內沒有未平倉的 Sell Put',
+    'exposure.no_sell_calls': '此週期內沒有未平倉的 Sell Call',
     'exposure.calculation_note': '* 根據每份合約的股數計算（如果未知，預設為 500）。',
     'exposure.days_suffix': '天',
     'exposure.put': '認沽',
@@ -463,6 +467,9 @@ export const translations = {
     'detail.realized_pnl': '已實現盈虧',
     'detail.unrealized_pnl': '未實現盈虧',
     'detail.net_pnl': '淨盈虧',
+    'detail.stock_price': '標的股價',
+    'detail.breakeven_cost': '打和成本',
+    'detail.annualized_return': '年化收益率',
     'detail.trades_history': '交易記錄',
     'detail.no_trades': '尚無交易記錄',
     'detail.date': '日期',
@@ -486,6 +493,7 @@ export const translations = {
     'detail.confirm_delete_option': '您確定要刪除此期權及其所有交易嗎？此操作無法復原。',
     'detail.option_deleted': '期權刪除成功',
     'detail.trade_updated': '交易更新成功',
+    'detail.option_greeks': '期權數據與希臘值',
   }
 };
 

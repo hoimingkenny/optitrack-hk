@@ -269,6 +269,14 @@ export function calculateOptionPNL(
   const totalFees = calculateTotalFees(trades);
   const totalMargin = calculateTotalMargin(option, trades);
   
+  // Calculate total net premium received (cash flow from premiums only)
+  const totalPremium = trades.reduce((sum, trade) => {
+    const tp = parseNumeric(trade.premium) * parseNumeric(trade.contracts) * (parseNumeric(trade.shares_per_contract) || DEFAULT_SHARES_PER_CONTRACT);
+    const isSellTrade = (option.direction === 'Sell' && isOpeningTrade(trade.trade_type)) || 
+                        (option.direction === 'Buy' && isClosingTrade(trade.trade_type));
+    return sum + (isSellTrade ? tp : -tp);
+  }, 0);
+  
   // Calculate PNL as sum of all (premium * contracts * shares) - fees
   // For Sell options: Received (+) at open, Paid (-) at close
   // For Buy options: Paid (-) at open, Received (+) at close
@@ -324,6 +332,7 @@ export function calculateOptionPNL(
     grossPNL,
     netPNL,
     returnPercentage,
+    totalPremium,
     totalMargin,
     marketValue,
   };

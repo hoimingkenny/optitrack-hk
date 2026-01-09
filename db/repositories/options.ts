@@ -4,6 +4,31 @@ import { eq, and, desc, asc, sql } from 'drizzle-orm';
 import { calculateOptionPNL, calculateNetContracts } from '@/utils/helpers/option-calculator';
 
 /**
+ * Format symbol for database storage (e.g. 09988.HK -> HK.09988)
+ */
+function formatSymbolForDB(symbol: string): string {
+  if (!symbol) return '';
+  const s = symbol.toUpperCase().trim();
+  const parts = s.split('.');
+  
+  if (parts.length === 2) {
+    const [p1, p2] = parts;
+    const marketPrefixes = ['HK', 'US', 'SH', 'SZ'];
+    // 09988.HK -> HK.09988
+    if (marketPrefixes.includes(p2)) return `${p2}.${p1.padStart(p2 === 'HK' ? 5 : 0, '0')}`;
+    // HK.09988 -> HK.09988
+    if (marketPrefixes.includes(p1)) return `${p1}.${p2.padStart(p1 === 'HK' ? 5 : 0, '0')}`;
+  }
+  
+  // Default to HK for pure numbers
+  if (/^\d+$/.test(s)) {
+    return `HK.${s.padStart(5, '0')}`;
+  }
+  
+  return s;
+}
+
+/**
  * Create a new option with an initial trade
  */
 export async function createOptionWithTrade(
@@ -11,6 +36,8 @@ export async function createOptionWithTrade(
   optionData: CreateOptionInput,
   tradeData: Omit<CreateTradeInput, 'trade_type'>
 ): Promise<{ option: Option; trade: Trade }> {
+  const formattedSymbol = formatSymbolForDB(optionData.stock_symbol);
+  
   // Start transaction
   const result = await db.transaction(async (tx) => {
     // 1. Check if option already exists
@@ -20,7 +47,7 @@ export async function createOptionWithTrade(
       .where(
         and(
           eq(options.user_id, userId),
-          eq(options.stock_symbol, optionData.stock_symbol.toUpperCase()),
+          eq(options.stock_symbol, formattedSymbol),
           eq(options.direction, optionData.direction),
           eq(options.option_type, optionData.option_type),
           eq(options.strike_price, optionData.strike_price.toString()),
@@ -52,8 +79,8 @@ export async function createOptionWithTrade(
         .insert(options)
         .values({
           user_id: userId,
-          stock_symbol: optionData.stock_symbol.toUpperCase(),
-          stock_name: optionData.stock_name || optionData.stock_symbol.toUpperCase(),
+          stock_symbol: formattedSymbol,
+          stock_name: optionData.stock_name || formattedSymbol,
           direction: optionData.direction,
           option_type: optionData.option_type,
           strike_price: optionData.strike_price.toString(),

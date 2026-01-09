@@ -187,6 +187,7 @@ export interface OptionPNL {
   grossPNL: number;
   netPNL: number;
   returnPercentage: number;
+  totalPremium: number;
   totalMargin?: number;
   marketValue?: number;
 }
