@@ -1,6 +1,6 @@
 'use client';
 
-import { Box, Flex, Text, Button, Popover, IconButton } from '@chakra-ui/react';
+import { Box, Flex, Text, Button, Popover, IconButton, Tooltip as ChakraTooltip } from '@chakra-ui/react';
 import type { OptionWithSummary } from '@/db/schema';
 import { useMemo, useState, useRef } from 'react';
 import { useLanguage } from '@/components/providers/LanguageProvider';
@@ -90,17 +90,42 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
 
   // Process option expiration for each date
   const getActivityForDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    // Use local date string YYYY-MM-DD for comparison to avoid timezone shifts
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
     
     // Find options expiring on this date
     const expiringOptions = options.filter((option: OptionWithSummary) => {
-      const expiryDate = new Date(option.expiry_date);
-      const expiryStr = expiryDate.toISOString().split('T')[0];
+      let expiryStr = '';
+      if (typeof option.expiry_date === 'string') {
+        expiryStr = option.expiry_date.split('T')[0];
+      } else {
+        const d = option.expiry_date as Date;
+        const ey = d.getFullYear();
+        const em = String(d.getMonth() + 1).padStart(2, '0');
+        const ed = String(d.getDate()).padStart(2, '0');
+        expiryStr = `${ey}-${em}-${ed}`;
+      }
       return dateStr === expiryStr;
     });
 
     const count = expiringOptions.length;
-    if (count === 0) return { color: 'bg.muted', label: t('heatmap.no_options_expiring'), intensity: 0 };
+    if (count === 0) return { color: 'bg.muted', label: t('heatmap.no_options_expiring'), intensity: 0, names: [] };
+
+    // Format the names: HK.00005 260330 115.00 認沽
+    const names = Array.from(new Set(expiringOptions.map(o => {
+      const expiry = new Date(o.expiry_date);
+      const yy = expiry.getFullYear().toString().slice(-2);
+      const mm = String(expiry.getMonth() + 1).padStart(2, '0');
+      const dd = String(expiry.getDate()).padStart(2, '0');
+      const datePart = `${yy}${mm}${dd}`;
+      const typeStr = o.option_type === 'Put' ? t('exposure.put') : t('exposure.call');
+      const strikePrice = typeof o.strike_price === 'string' ? parseFloat(o.strike_price) : (o.strike_price as unknown as number);
+      const strike = strikePrice.toFixed(2);
+      return `${o.stock_symbol} ${datePart} ${strike} ${typeStr}`;
+    })));
 
     // Intensity levels (1-5) based on count
     // If we have many options, we might want to scale this differently, 
@@ -115,16 +140,16 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
     const hasBuyPut = expiringOptions.some(o => o.direction === 'Buy' && o.option_type === 'Put');
 
     if (hasSellPut) {
-      return { color: colorMaps.sellPut[index], label: `${count} ${t('heatmap.options_expiring')} (${t('heatmap.sell_put')})`, intensity };
+      return { color: colorMaps.sellPut[index], label: `${count} ${t('heatmap.options_expiring')} (${t('heatmap.sell_put')})`, intensity, names };
     } else if (hasSellCall) {
-      return { color: colorMaps.sellCall[index], label: `${count} ${t('heatmap.options_expiring')} (${t('heatmap.sell_call')})`, intensity };
+      return { color: colorMaps.sellCall[index], label: `${count} ${t('heatmap.options_expiring')} (${t('heatmap.sell_call')})`, intensity, names };
     } else if (hasBuyCall) {
-      return { color: colorMaps.buyCall[index], label: `${count} ${t('heatmap.options_expiring')} (${t('heatmap.buy_call')})`, intensity };
+      return { color: colorMaps.buyCall[index], label: `${count} ${t('heatmap.options_expiring')} (${t('heatmap.buy_call')})`, intensity, names };
     } else if (hasBuyPut) {
-      return { color: colorMaps.buyPut[index], label: `${count} ${t('heatmap.options_expiring')} (${t('heatmap.buy_put')})`, intensity };
+      return { color: colorMaps.buyPut[index], label: `${count} ${t('heatmap.options_expiring')} (${t('heatmap.buy_put')})`, intensity, names };
     }
     
-    return { color: 'bg.muted', label: t('heatmap.no_options_expiring'), intensity: 0 };
+    return { color: 'bg.muted', label: t('heatmap.no_options_expiring'), intensity: 0, names };
   };
 
   // Group dates by week for the grid
@@ -343,30 +368,47 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
                         const dateStr = date.toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' });
                         const isToday = date.toDateString() === new Date().toDateString();
 
-                        return (
-                          <Box
-                            key={date.toISOString()}
-                            w="12px"
-                            h="12px"
-                            borderRadius="sm"
-                            bg={activity.color}
-                            title={`${dateStr}: ${activity.label}${isToday ? ` (${t('heatmap.today')})` : ''}`}
-                            _hover={{ 
-                              cursor: 'pointer', 
-                              transform: 'scale(1.3)',
-                              outline: '2px solid',
-                              outlineColor: activity.color === 'bg.muted' ? 'gray.400' : activity.color,
-                              outlineOffset: '1px',
-                              zIndex: 10,
-                              opacity: 1
-                            }}
-                            transition="all 0.15s ease-in-out"
-                            position="relative"
-                            border={isToday ? "1px solid" : "none"}
-                            borderColor={isToday ? "fg.default" : "transparent"}
-                            boxShadow={isToday ? "0 0 0 1px var(--chakra-colors-fg-default)" : "none"}
-                          />
-                        );
+                          return (
+                            <ChakraTooltip.Root key={date.toISOString()} openDelay={5} closeDelay={0}>
+                              <ChakraTooltip.Trigger asChild>
+                                <Box
+                                  w="12px"
+                                  h="12px"
+                                  borderRadius="sm"
+                                  bg={activity.color}
+                                  _hover={{ 
+                                    cursor: 'pointer', 
+                                    transform: 'scale(1.3)',
+                                    outline: '2px solid',
+                                    outlineColor: activity.color === 'bg.muted' ? 'gray.400' : activity.color,
+                                    outlineOffset: '1px',
+                                    zIndex: 10,
+                                    opacity: 1
+                                  }}
+                                  transition="all 0.1s ease-in-out"
+                                  position="relative"
+                                  border={isToday ? "1px solid" : "none"}
+                                  borderColor={isToday ? "fg.default" : "transparent"}
+                                  boxShadow={isToday ? "0 0 0 1px var(--chakra-colors-fg-default)" : "none"}
+                                />
+                              </ChakraTooltip.Trigger>
+                              <ChakraTooltip.Positioner zIndex="tooltip">
+                                <ChakraTooltip.Content
+                                  bg="gray.800"
+                                  color="white"
+                                  fontSize="xs"
+                                  p={2}
+                                  borderRadius="md"
+                                  whiteSpace="pre-wrap"
+                                >
+                                  <ChakraTooltip.Arrow />
+                                  {activity.names.length > 0 
+                                    ? `${dateStr}:\n${activity.names.join('\n')}${isToday ? `\n(${t('heatmap.today')})` : ''}`
+                                    : `${dateStr}: ${activity.label}${isToday ? ` (${t('heatmap.today')})` : ''}`}
+                                </ChakraTooltip.Content>
+                              </ChakraTooltip.Positioner>
+                            </ChakraTooltip.Root>
+                          );
                       })}
                     </Flex>
                   ))}
