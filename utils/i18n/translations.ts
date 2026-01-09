@@ -350,10 +350,10 @@ export const translations = {
     // Exposure Tables
     'exposure.top5_sell_put': '前 5 大 Sell Put 風險敞口 (接貨現金)',
     'exposure.top5_sell_call': '前 5 大 Sell Call 風險敞口 (接貨股票)',
-    'exposure.option_name': '期權名稱',
+    'exposure.option_name': '認沽期權名稱',
     'exposure.days': '天數',
     'exposure.net': '淨倉',
-    'exposure.covering_cash': '接貨現金',
+    'exposure.covering_cash': '接貨現金(港幣)',
     'exposure.covering_shares': '接貨股票',
     'exposure.no_sell_puts': '此週期內沒有未平倉的 Sell Put',
     'exposure.no_sell_calls': '此週期內沒有未平倉的 Sell Call',

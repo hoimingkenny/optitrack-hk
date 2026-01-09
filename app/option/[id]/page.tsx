@@ -441,15 +441,17 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
     if (!optionData || !optionData.summary) return { breakevenCost: null, annualizedReturn: null };
 
     // 1. Breakeven Cost Calculation
-    // formula: (strike * shares) - netPremiumReceived
+    // formula: (strike * shares) - (netPremiumReceived - totalFees)
     const strike = typeof optionData.strike_price === 'string' ? parseFloat(optionData.strike_price) : optionData.strike_price;
     const netContracts = optionData.summary.netContracts;
     const sharesPerContract = optionData.trades[0]?.shares_per_contract || 500;
     const netPremiumReceived = optionData.summary.totalPremium || 0;
+    const totalFees = optionData.summary.totalFees || 0;
     
     let bCost = null;
     if (netContracts > 0) {
-      bCost = (strike * netContracts * sharesPerContract) - netPremiumReceived;
+      // Cost of buying shares minus net income (premium - fees)
+      bCost = (strike * netContracts * sharesPerContract) - (netPremiumReceived - totalFees);
     }
 
     // 2. Annualized Return Calculation

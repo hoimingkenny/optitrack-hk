@@ -71,10 +71,29 @@ export default function SellPutExposure({ options, timeRange = 'all' }: SellPutE
     const mapped = filteredOptions.map(o => {
       const strikePrice = typeof o.strike_price === 'string' ? parseFloat(o.strike_price) : o.strike_price;
       const sharesPerContract = o.shares_per_contract || 500; 
-      const coveringCash = o.net_contracts * sharesPerContract * strikePrice;
+      
+      // Covering Cash should be Breakeven Cost
+      // formula: (strike * contracts * shares) - (totalPremium - totalFees)
+      // Note: OptionWithSummary has total_pnl, net_contracts, etc. but not raw totalPremium/fees
+      // However, we know: netPNL = realizedPNL + unrealizedPNL - fees
+      // and totalPremium is approximately the entry value.
+      // For accurate calculation, we should use the same logic as the detail page if possible.
+      // Since OptionWithSummary doesn't have all summary fields, we'll use what's available.
+      // If o.total_pnl is net, then realized income is roughly (total_pnl + unrealized_pnl + fees)
+      
+      // Let's check if we can get totalPremium from the option object if it was extended
+      const opt = o as any;
+      const totalPremium = opt.summary?.totalPremium || 0;
+      const totalFees = opt.summary?.totalFees || 0;
+      
+      let coveringCash = o.net_contracts * sharesPerContract * strikePrice;
+      if (opt.summary) {
+        coveringCash = (strikePrice * o.net_contracts * sharesPerContract) - (totalPremium - totalFees);
+      }
+      
       const expiry = new Date(o.expiry_date);
       const daysLeft = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      const optionName = `${o.stock_symbol} ${formatDateToYYYYMMDD(o.expiry_date)} ${strikePrice.toFixed(2)} ${t('exposure.put')}`;
+      const optionName = `${o.stock_symbol} ${formatDateToYYYYMMDD(o.expiry_date)} ${strikePrice.toFixed(2)}`;
       
       return {
         ...o,
@@ -207,13 +226,13 @@ export default function SellPutExposure({ options, timeRange = 'all' }: SellPutE
                       {option.optionName}
                     </Table.Cell>
                     <Table.Cell textAlign="center" px={4} color="fg.muted">
-                      {option.daysLeft}{t('exposure.days_suffix')}
+                      {option.daysLeft}
                     </Table.Cell>
                     <Table.Cell textAlign="center" px={4} color="fg.default">
                       {option.net_contracts}
                     </Table.Cell>
                     <Table.Cell textAlign="right" px={4} fontWeight="medium" color="#D73535">
-                      {formatHKD(option.coveringCash)}
+                      {formatHKD(option.coveringCash).replace('HK$', '')}
                     </Table.Cell>
                   </Table.Row>
                 );

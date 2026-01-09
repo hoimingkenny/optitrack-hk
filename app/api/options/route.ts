@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
       unrealized_pnl: o.summary.unrealizedPNL,
       trades_count: o.trades.length,
       shares_per_contract: o.trades[0]?.shares_per_contract || 500,
+      summary: o.summary, // Pass summary for calculations like breakeven
     }));
 
     return NextResponse.json({ options }, { status: 200 });
