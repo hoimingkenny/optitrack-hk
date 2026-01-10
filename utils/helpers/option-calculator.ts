@@ -276,11 +276,66 @@ export function calculateOptionPNL(
                         (option.direction === 'Buy' && isClosingTrade(trade.trade_type));
     return sum + (isSellTrade ? tp : -tp);
   }, 0);
-  
-  // Calculate PNL as sum of all (premium * contracts * shares) - fees
+
   // For Sell options: Received (+) at open, Paid (-) at close
   // For Buy options: Paid (-) at open, Received (+) at close
   const isSell = isSellDirection(option.direction);
+
+  // Calculate ROC and ROC (Margin)
+  let roc = 0;
+  let rocMargin = 0;
+  let dteValue = 0;
+
+  if (isSell && totalOpened > 0) {
+    const sortedTradesForROC = [...trades].sort((a, b) => {
+      const timeA = new Date(a.trade_date).getTime();
+      const timeB = new Date(b.trade_date).getTime();
+      if (timeA !== timeB) return timeA - timeB;
+      const createdA = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const createdB = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return createdA - createdB;
+    });
+
+    const firstTrade = sortedTradesForROC[0];
+    if (firstTrade) {
+      const firstTradeDate = new Date(firstTrade.trade_date);
+      const expiryDate = new Date(option.expiry_date);
+      // DTE = days from opening to expiry
+      const dte = Math.max(1, Math.ceil((expiryDate.getTime() - firstTradeDate.getTime()) / (1000 * 60 * 60 * 24)));
+      dteValue = dte;
+      
+      const strikePrice = parseNumeric(option.strike_price);
+      const openingPremium = trades
+        .filter(t => isOpeningTrade(t.trade_type))
+        .reduce((sum, t) => {
+          const s = parseNumeric(t.shares_per_contract) || DEFAULT_SHARES_PER_CONTRACT;
+          return sum + (parseNumeric(t.premium) * parseNumeric(t.contracts) * s);
+        }, 0);
+      
+      // ROC = (Premium / Capital at Risk) * (365 / DTE) * 100%
+      // Capital at Risk = strike * totalOpened * shares
+      // Use shares from the first trade as representative for the position's capital at risk
+      const representativeShares = parseNumeric(firstTrade.shares_per_contract) || DEFAULT_SHARES_PER_CONTRACT;
+      const capitalAtRisk = strikePrice * totalOpened * representativeShares;
+      
+      if (capitalAtRisk > 0) {
+        roc = (openingPremium / capitalAtRisk) * (365 / dte) * 100;
+      }
+
+      // ROC (Margin) = (Premium / Margin Requirement) * (365 / DTE) * 100%
+      // Calculate weighted average margin percent for all opening trades
+      let weightedMarginSum = 0;
+      trades.filter(t => isOpeningTrade(t.trade_type)).forEach(t => {
+        weightedMarginSum += parseNumeric(t.contracts) * parseNumeric(t.margin_percent);
+      });
+      const avgInitialMarginPercent = weightedMarginSum / totalOpened;
+      const initialMarginRequirement = capitalAtRisk * (avgInitialMarginPercent / 100);
+      
+      if (initialMarginRequirement > 0) {
+        rocMargin = (openingPremium / initialMarginRequirement) * (365 / dte) * 100;
+      }
+    }
+  }
   
   // Recalculate unrealized PNL using the chronological stats
   const shares = parseNumeric(trades[0]?.shares_per_contract) || DEFAULT_SHARES_PER_CONTRACT;
@@ -333,6 +388,9 @@ export function calculateOptionPNL(
     netPNL,
     returnPercentage,
     totalPremium,
+    roc,
+    rocMargin,
+    dte: dteValue,
     totalMargin,
     marketValue,
   };

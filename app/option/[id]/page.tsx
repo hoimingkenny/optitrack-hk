@@ -436,9 +436,9 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
     }
   };
 
-  // New Calculations: Breakeven Cost and Annualized Return
-  const { breakevenCost, annualizedReturn } = useMemo(() => {
-    if (!optionData || !optionData.summary) return { breakevenCost: null, annualizedReturn: null };
+  // New Calculations: Breakeven Cost
+  const { breakevenCost } = useMemo(() => {
+    if (!optionData || !optionData.summary) return { breakevenCost: null };
 
     // 1. Breakeven Cost Calculation
     // formula: (strike * shares) - (netPremiumReceived - totalFees)
@@ -454,30 +454,7 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
       bCost = (strike * netContracts * sharesPerContract) - (netPremiumReceived - totalFees);
     }
 
-    // 2. Annualized Return Calculation
-    // formula: (Premium / Risk Capital) * (365 / Holding Days) * 100%
-    let annReturn = null;
-    if (optionData.direction === 'Sell' && netPremiumReceived > 0) {
-      const firstTradeDate = new Date(optionData.trades[0].trade_date);
-      const expiryDate = new Date(optionData.expiry_date);
-      
-      // Holding days from open to expiry (or today if expired)
-      const totalDays = Math.max(1, Math.ceil((expiryDate.getTime() - firstTradeDate.getTime()) / (1000 * 60 * 60 * 24)));
-      
-      // Risk Capital (Margin) - Default to cash secured (Strike * Shares) if not provided
-      const marginPercent = optionData.trades[0]?.margin_percent ? parseFloat(optionData.trades[0].margin_percent) : null;
-      let riskCapital = strike * netContracts * sharesPerContract; // Default: Cash secured
-      
-      if (marginPercent) {
-        riskCapital = riskCapital * (marginPercent / 100);
-      }
-      
-      if (riskCapital > 0) {
-        annReturn = (netPremiumReceived / riskCapital) * (365 / totalDays) * 100;
-      }
-    }
-
-    return { breakevenCost: bCost, annualizedReturn: annReturn };
+    return { breakevenCost: bCost };
   }, [optionData]);
 
   const handleBack = () => {
@@ -558,7 +535,7 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                 p={6}
               >
                 <Heading size="md" mb={4} color="fg.default">{t('detail.position_summary')}</Heading>
-                <SimpleGrid columns={{ base: 1, md: 3 }} gap={6}>
+                <SimpleGrid columns={{ base: 1, md: 3, lg: 4 }} gap={6}>
                   {/* Row 1: Position Details */}
                   <Box>
                     <Text fontSize="sm" color="fg.muted" mb={1}>{t('detail.total_opened')}</Text>
@@ -661,6 +638,20 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
 
                   {/* Row 4: Metrics */}
                   <Box>
+                    <Text fontSize="sm" color="fg.muted" mb="1">{t('detail.total_premium')}</Text>
+                    <Text fontSize="2xl" fontWeight="bold" color="fg.default">
+                      {formatHKD(optionData.summary.totalPremium)}
+                    </Text>
+                  </Box>
+
+                  <Box>
+                    <Text fontSize="sm" color="fg.muted" mb="1">{t('detail.total_fees')}</Text>
+                    <Text fontSize="2xl" fontWeight="bold" color="fg.default">
+                      {formatHKD(optionData.summary.totalFees)}
+                    </Text>
+                  </Box>
+
+                  <Box>
                     <Text fontSize="sm" color="fg.muted" mb="1">{t('detail.stock_price')}</Text>
                     <Text fontSize="2xl" fontWeight="bold" color="fg.default">
                       {stockPrice !== null ? formatHKD(stockPrice) : '-'}
@@ -675,9 +666,27 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                   </Box>
 
                   <Box>
-                    <Text fontSize="sm" color="fg.muted" mb="1">{t('detail.annualized_return')}</Text>
+                    <Text fontSize="sm" color="fg.muted" mb="1">{t('detail.dte')}</Text>
+                    <Text fontSize="2xl" fontWeight="bold" color="fg.default">
+                      {optionData.summary.dte || '-'}
+                    </Text>
+                  </Box>
+
+                  <Box>
+                    <Text fontSize="sm" color="fg.muted" mb="1">{t('detail.roc')}</Text>
                     <Text fontSize="2xl" fontWeight="bold" color="blue.400">
-                      {annualizedReturn !== null ? `${annualizedReturn.toFixed(2)}%` : '-'}
+                      {optionData.summary.roc !== undefined && optionData.summary.roc !== 0 
+                        ? `${optionData.summary.roc.toFixed(2)}%` 
+                        : '-'}
+                    </Text>
+                  </Box>
+
+                  <Box>
+                    <Text fontSize="sm" color="fg.muted" mb="1">{t('detail.roc_margin')}</Text>
+                    <Text fontSize="2xl" fontWeight="bold" color="blue.400">
+                      {optionData.summary.rocMargin !== undefined && optionData.summary.rocMargin !== 0 
+                        ? `${optionData.summary.rocMargin.toFixed(2)}%` 
+                        : '-'}
                     </Text>
                   </Box>
                 </SimpleGrid>
