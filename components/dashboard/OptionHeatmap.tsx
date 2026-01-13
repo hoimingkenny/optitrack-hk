@@ -22,6 +22,8 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
   const [isLegendOpen, setIsLegendOpen] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const openOptions = useMemo(() => options.filter(o => o.status === 'Open'), [options]);
+
   const handleMouseEnter = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setIsLegendOpen(true);
@@ -39,16 +41,10 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
     const currentYear = new Date().getFullYear();
     years.add(currentYear);
 
-    options.forEach(option => {
+    openOptions.forEach(option => {
       // Add year from creation date
       const startYear = new Date(option.created_at).getFullYear();
       years.add(startYear);
-      
-      // Add year from update date (if closed/expired)
-      if (option.status !== 'Open') {
-        const endYear = new Date(option.updated_at).getFullYear();
-        years.add(endYear);
-      }
 
       // Add year from expiry date (important for the Expiration Heatmap)
       const expiryYear = new Date(option.expiry_date).getFullYear();
@@ -56,7 +52,7 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
     });
 
     return Array.from(years).sort((a, b) => b - a);
-  }, [options]);
+  }, [openOptions]);
 
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
@@ -97,7 +93,7 @@ export default function OptionHeatmap({ options }: OptionHeatmapProps) {
     const dateStr = `${year}-${month}-${day}`;
     
     // Find options expiring on this date
-    const expiringOptions = options.filter((option: OptionWithSummary) => {
+    const expiringOptions = openOptions.filter((option: OptionWithSummary) => {
       let expiryStr = '';
       if (typeof option.expiry_date === 'string') {
         expiryStr = option.expiry_date.split('T')[0];
