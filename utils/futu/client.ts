@@ -90,14 +90,14 @@ export class FutuClient {
       }
 
       // Timeout
-      setTimeout(() => {
-        if (!resolved && !this.isConnected) {
-          console.error('[FutuClient] Connection timeout');
-          this.connectionPromise = null;
-          resolved = true;
-          reject(new Error('Futu connection timeout'));
-        }
-      }, 15000); // Increased timeout to 15s
+    setTimeout(() => {
+      if (!resolved && !this.isConnected) {
+        console.error('[FutuClient] Connection timeout');
+        this.connectionPromise = null;
+        resolved = true;
+        reject(new Error('Futu connection timeout'));
+      }
+    }, 30000); // Increased timeout to 30s
     });
 
     return this.connectionPromise;
@@ -420,6 +420,87 @@ export class FutuClient {
     return [];
   }
 
+  // Get K-Line (Candlestick) Data
+  async getSecurityKL(
+    market: number,
+    code: string,
+    klType: number = 2, // Day
+    rehabType: number = 1, // Forward
+    limit: number = 1000
+  ): Promise<any[]> {
+    if (!this.isConnected) await this.connect();
+
+    if (!code) return [];
+
+    // Map KLType to SubType
+    // KLType_Day (2) -> SubType_KL_Day (6)
+    // For now we only support Day (2) which is what we use
+    let subType = Qot_Common.SubType.SubType_KL_Day;
+    if (klType === Qot_Common.KLType.KLType_Day) subType = Qot_Common.SubType.SubType_KL_Day;
+    else if (klType === Qot_Common.KLType.KLType_1Min) subType = Qot_Common.SubType.SubType_KL_1Min;
+    else if (klType === Qot_Common.KLType.KLType_5Min) subType = Qot_Common.SubType.SubType_KL_5Min;
+    else if (klType === Qot_Common.KLType.KLType_15Min) subType = Qot_Common.SubType.SubType_KL_15Min;
+    else if (klType === Qot_Common.KLType.KLType_30Min) subType = Qot_Common.SubType.SubType_KL_30Min;
+    else if (klType === Qot_Common.KLType.KLType_60Min) subType = Qot_Common.SubType.SubType_KL_60Min;
+    else if (klType === Qot_Common.KLType.KLType_Week) subType = Qot_Common.SubType.SubType_KL_Week;
+    else if (klType === Qot_Common.KLType.KLType_Month) subType = Qot_Common.SubType.SubType_KL_Month;
+    
+    // Subscribe first
+    const subReq = {
+      c2s: {
+        securityList: [{ market, code }],
+        subTypeList: [subType],
+        isSubOrUnSub: true,
+        isRegOrUnRegPush: true,
+      },
+    };
+    
+    try {
+      console.log(`[FutuClient] Subscribing to KL data (Type: ${klType}, SubType: ${subType})...`);
+      const subRes = await (this.websocket as any).Sub(subReq);
+      if (subRes.retType !== 0) {
+        console.warn('[FutuClient] Subscription warning:', subRes.retMsg);
+        // Continue anyway, maybe it's already subscribed or error is non-fatal
+      }
+    } catch (err) {
+      console.warn('[FutuClient] Subscription error:', err);
+    }
+
+    const req = {
+      c2s: {
+        rehabType,
+        klType,
+        security: {
+          market,
+          code,
+        },
+        reqNum: limit,
+      },
+    };
+
+    console.log('[FutuClient] GetSecurityKL request:', JSON.stringify(req, null, 2));
+    const res = await (this.websocket as any).GetKL(req);
+    
+    if (res.retType !== 0) {
+      console.error('[FutuClient] GetSecurityKL API error:', res.retMsg);
+      throw new Error(res.retMsg || 'Futu API error');
+    }
+
+    if (res.s2c && res.s2c.klList) {
+      return res.s2c.klList.map((item: any) => ({
+        time: item.time,
+        open: toNumber(item.openPrice),
+        close: toNumber(item.closePrice),
+        high: toNumber(item.highPrice),
+        low: toNumber(item.lowPrice),
+        volume: toNumber(item.volume),
+        turnover: toNumber(item.turnover),
+      }));
+    }
+
+    return [];
+  }
+
   disconnect() {
     this.websocket.stop();
     this.isConnected = false;
@@ -566,4 +647,18 @@ export async function getSnapshots(symbols: string[]) {
   if (securities.length === 0) return [];
   
   return globalClient.getSecuritySnapshots(securities);
+}
+
+export async function getSecurityKL(
+  symbol: string,
+  klType: number = 2, // Day
+  rehabType: number = 1, // Forward
+  limit: number = 1000
+) {
+  if (!symbol) return [];
+
+  const market = getMarketFromSymbol(symbol);
+  const code = getCodeFromSymbol(symbol);
+
+  return globalClient.getSecurityKL(market, code, klType, rehabType, limit);
 }

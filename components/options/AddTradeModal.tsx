@@ -50,21 +50,6 @@ export default function AddTradeModal({
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Reset form when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      setFormData({
-        trade_date: getTodayString(),
-        direction: 'Buy' as TradeDirection,
-        premium: '',
-        contracts: '',
-        fee: '0',
-        margin_percent: '',
-      });
-      setErrors({});
-    }
-  }, [isOpen]);
-
   const premium = parseFloat(formData.premium) || 0;
   const contracts = parseInt(formData.contracts) || 0;
   const totalPremium = calculateTotalPremium(premium, contracts, sharesPerContract);

@@ -27,7 +27,9 @@ export default function OptionsTable({ options }: OptionsTableProps) {
 
   // Reset to first page when options change (e.g. filtering)
   useEffect(() => {
-    setCurrentPage(1);
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    }
   }, [options.length]);
 
   const handleSort = (field: SortField) => {

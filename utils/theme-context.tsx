@@ -22,10 +22,10 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   // Only run on client after mount
   useEffect(() => {
     const stored = localStorage.getItem('optitrack-theme') as Theme;
-    if (stored === 'light' || stored === 'dark') {
+    if ((stored === 'light' || stored === 'dark') && stored !== theme) {
       setTheme(stored);
     }
-  }, []);
+  }, [theme]);
 
   const toggleTheme = useCallback(() => {
     setTheme(prev => {

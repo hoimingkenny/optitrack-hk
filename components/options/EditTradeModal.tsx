@@ -42,30 +42,15 @@ export default function EditTradeModal({
   ];
 
   const [formData, setFormData] = useState({
-    trade_date: '',
-    direction: 'Buy' as TradeDirection,
-    premium: '',
-    contracts: '',
-    fee: '0',
-    margin_percent: '',
+    trade_date: initialData ? formatDateForInput(initialData.trade_date) : '',
+    direction: ((displayDirection as TradeDirection) || 'Buy'),
+    premium: initialData?.premium.toString() || '',
+    contracts: initialData?.contracts.toString() || '',
+    fee: initialData?.fee.toString() || '0',
+    margin_percent: initialData?.margin_percent?.toString() || '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  // Reset form when modal opens or initialData changes
-  useEffect(() => {
-    if (isOpen && initialData) {
-      setFormData({
-        trade_date: formatDateForInput(initialData.trade_date),
-        direction: (displayDirection as TradeDirection) || 'Buy', // Use display direction for UI
-        premium: initialData.premium.toString(),
-        contracts: initialData.contracts.toString(),
-        fee: initialData.fee.toString(),
-        margin_percent: initialData.margin_percent?.toString() || '',
-      });
-      setErrors({});
-    }
-  }, [isOpen, initialData, displayDirection]);
 
   const premium = parseFloat(formData.premium) || 0;
   const contracts = parseInt(formData.contracts) || 0;

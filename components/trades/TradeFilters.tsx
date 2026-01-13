@@ -1,10 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Box, Flex, Text, VStack } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import { OptionFilters } from '@/db/schema';
 import Select from '../ui/Select';
-import Input from '../ui/Input';
 import Button from '@/components/ui/Button';
 import { useLanguage } from '@/components/providers/LanguageProvider';
 

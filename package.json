@@ -19,6 +19,7 @@
     "dotenv": "^17.2.3",
     "drizzle-orm": "^0.45.1",
     "futu-api": "^9.6.5608",
+    "lightweight-charts": "^5.1.0",
     "next": "16.1.1",
     "postgres": "^3.4.7",
     "react": "19.2.3",

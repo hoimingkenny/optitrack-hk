@@ -17,10 +17,10 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   // Load saved language on mount
   useEffect(() => {
     const savedLang = localStorage.getItem('optitrack-language') as Language;
-    if (savedLang === 'en' || savedLang === 'zh') {
+    if ((savedLang === 'en' || savedLang === 'zh') && savedLang !== language) {
       setLanguageState(savedLang);
     }
-  }, []);
+  }, [language]);
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);

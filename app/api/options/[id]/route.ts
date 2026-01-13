@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getOptionById, updateOptionStatus, deleteOption } from '@/db/repositories/options';
 import { UpdateOptionInput } from '@/db/schema';
-import globalClient, { toNumber } from '@/utils/futu/client';
+import { getQuote, toNumber } from '@/utils/futu/client';
 import { calculateOptionPNL } from '@/utils/helpers/option-calculator';
 
 // Create Supabase client for API routes
@@ -46,15 +46,10 @@ export async function GET(
     // If option is Open and has futu_code, fetch live snapshot
     if (optionWithTrades.status === 'Open' && optionWithTrades.futu_code) {
       try {
-        const [market, code] = optionWithTrades.futu_code.split('.');
-        const snapshots = await globalClient.getSecuritySnapshots([{
-          market: market === 'HK' ? 1 : 2,
-          code: code
-        }]);
+        const quote = await getQuote(optionWithTrades.futu_code);
 
-        if (snapshots && snapshots.length > 0) {
-          const snapshot = snapshots[0];
-          const currentPrice = toNumber(snapshot.basic.curPrice || snapshot.basic.lastPrice);
+        if (quote) {
+          const currentPrice = toNumber(quote.basic.curPrice || quote.basic.lastPrice);
           
           if (currentPrice) {
             // Recalculate PNL with current price

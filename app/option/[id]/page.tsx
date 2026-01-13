@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation';
 import Button from '@/components/ui/Button';
 import AddTradeModal from '@/components/options/AddTradeModal';
 import EditTradeModal from '@/components/options/EditTradeModal';
+import OptionChart from '@/components/options/OptionChart';
 import { useLanguage } from '@/components/providers/LanguageProvider';
 
 export default function OptionDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -526,6 +527,30 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
                 </Flex>
               </Box>
 
+              {/* Chart */}
+              <OptionChart 
+                symbol={(() => {
+                  const s = optionData.stock_symbol;
+                  if (!s) return '';
+                  
+                  // Logic to standardize stock symbol similar to fetchPrices
+                  const val = s.toUpperCase().trim();
+                  const parts = val.split('.');
+                  if (parts.length === 2) {
+                      const marketPrefixes = ['HK', 'US', 'SH', 'SZ'];
+                      const [p1, p2] = parts;
+                      if (marketPrefixes.includes(p2)) return `${p2}.${p1.padStart(p2 === 'HK' ? 5 : 0, '0')}`;
+                      if (marketPrefixes.includes(p1)) return `${p1}.${p2.padStart(p1 === 'HK' ? 5 : 0, '0')}`;
+                  }
+                  if (/^\d+$/.test(val)) {
+                      return `HK.${val.padStart(5, '0')}`;
+                  }
+                  return val;
+                })()}
+                trades={optionData.trades}
+                optionDirection={optionData.direction}
+              />
+
               {/* Position Summary */}
               <Box 
                 bg="bg.surface" 
@@ -899,34 +924,34 @@ export default function OptionDetailPage({ params }: { params: Promise<{ id: str
         </Container>
       </Box>
 
-      {optionData && (
-        <>
-          <AddTradeModal
-            isOpen={isAddTradeModalOpen}
-            onClose={() => setIsAddTradeModalOpen(false)}
-            onSubmit={handleAddTrade}
-            optionName={`${optionData.stock_symbol} ${formatDateToYYYYMMDD(optionData.expiry_date)} ${(typeof optionData.strike_price === 'string' ? parseFloat(optionData.strike_price) : optionData.strike_price).toFixed(2)} ${optionData.option_type}`}
-            sharesPerContract={optionData.trades[0]?.shares_per_contract || 500}
-            optionDirection={optionData.direction}
-            minDate={optionData.trades.length > 0 ? formatDateForInput(optionData.trades[0].trade_date) : undefined}
-            isLoading={submittingTrade}
-          />
+      {optionData && isAddTradeModalOpen && (
+        <AddTradeModal
+          isOpen={isAddTradeModalOpen}
+          onClose={() => setIsAddTradeModalOpen(false)}
+          onSubmit={handleAddTrade}
+          optionName={`${optionData.stock_symbol} ${formatDateToYYYYMMDD(optionData.expiry_date)} ${(typeof optionData.strike_price === 'string' ? parseFloat(optionData.strike_price) : optionData.strike_price).toFixed(2)} ${optionData.option_type}`}
+          sharesPerContract={optionData.trades[0]?.shares_per_contract || 500}
+          optionDirection={optionData.direction}
+          minDate={optionData.trades.length > 0 ? formatDateForInput(optionData.trades[0].trade_date) : undefined}
+          isLoading={submittingTrade}
+        />
+      )}
 
-          <EditTradeModal
-            isOpen={isEditTradeModalOpen}
-            onClose={() => {
-              setIsEditTradeModalOpen(false);
-              setEditingTrade(null);
-            }}
-            onSubmit={handleUpdateTrade}
-            initialData={editingTrade}
-            optionName={`${optionData.stock_symbol} ${formatDateToYYYYMMDD(optionData.expiry_date)} ${(typeof optionData.strike_price === 'string' ? parseFloat(optionData.strike_price) : optionData.strike_price).toFixed(2)} ${optionData.option_type}`}
-            sharesPerContract={editingTrade?.shares_per_contract || 500}
-            minDate={optionData.trades.length > 0 ? formatDateForInput(optionData.trades[0].trade_date) : undefined}
-            isLoading={submittingTrade}
-            displayDirection={displayDirectionForEdit}
-          />
-        </>
+      {optionData && isEditTradeModalOpen && (
+        <EditTradeModal
+          isOpen={isEditTradeModalOpen}
+          onClose={() => {
+            setIsEditTradeModalOpen(false);
+            setEditingTrade(null);
+          }}
+          onSubmit={handleUpdateTrade}
+          initialData={editingTrade}
+          optionName={`${optionData.stock_symbol} ${formatDateToYYYYMMDD(optionData.expiry_date)} ${(typeof optionData.strike_price === 'string' ? parseFloat(optionData.strike_price) : optionData.strike_price).toFixed(2)} ${optionData.option_type}`}
+          sharesPerContract={editingTrade?.shares_per_contract || 500}
+          minDate={optionData.trades.length > 0 ? formatDateForInput(optionData.trades[0].trade_date) : undefined}
+          isLoading={submittingTrade}
+          displayDirection={displayDirectionForEdit}
+        />
       )}
     </Box>
   );
