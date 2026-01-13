@@ -20,7 +20,7 @@ type SortOrder = 'asc' | 'desc';
 export default function OptionsTable({ options }: OptionsTableProps) {
   const router = useRouter();
   const { t } = useLanguage();
-  const [sortField, setSortField] = useState<SortField>('name');
+  const [sortField, setSortField] = useState<SortField>('status');
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 10;
@@ -43,24 +43,28 @@ export default function OptionsTable({ options }: OptionsTableProps) {
   };
 
   const sortedOptions = useMemo(() => {
+    const compareOptionName = (a: OptionWithSummary, b: OptionWithSummary) => {
+      let comparison = a.stock_symbol.localeCompare(b.stock_symbol);
+      if (comparison !== 0) return comparison;
+
+      comparison = new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime();
+      if (comparison !== 0) return comparison;
+
+      const strikeA = typeof a.strike_price === 'string' ? parseFloat(a.strike_price) : a.strike_price;
+      const strikeB = typeof b.strike_price === 'string' ? parseFloat(b.strike_price) : b.strike_price;
+      comparison = strikeA - strikeB;
+      if (comparison !== 0) return comparison;
+
+      return a.option_type.localeCompare(b.option_type);
+    };
+
     const sorted = [...options].sort((a, b) => {
       let comparison = 0;
 
       switch (sortField) {
         case 'name':
           // Sort by stock symbol, then expiry, then strike, then type
-          comparison = a.stock_symbol.localeCompare(b.stock_symbol);
-          if (comparison === 0) {
-            comparison = new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime();
-            if (comparison === 0) {
-              const strikeA = typeof a.strike_price === 'string' ? parseFloat(a.strike_price) : a.strike_price;
-              const strikeB = typeof b.strike_price === 'string' ? parseFloat(b.strike_price) : b.strike_price;
-              comparison = strikeA - strikeB;
-              if (comparison === 0) {
-                comparison = a.option_type.localeCompare(b.option_type);
-              }
-            }
-          }
+          comparison = compareOptionName(a, b);
           break;
         case 'direction':
           comparison = a.direction.localeCompare(b.direction);
@@ -79,7 +83,13 @@ export default function OptionsTable({ options }: OptionsTableProps) {
           comparison = a.total_pnl - b.total_pnl;
           break;
         case 'status':
-          comparison = a.status.localeCompare(b.status);
+          comparison = (a.status === 'Open' ? 0 : 1) - (b.status === 'Open' ? 0 : 1);
+          if (comparison === 0) {
+            comparison = new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime();
+            if (comparison === 0) {
+              comparison = compareOptionName(a, b);
+            }
+          }
           break;
       }
 

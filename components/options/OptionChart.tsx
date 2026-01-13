@@ -36,7 +36,7 @@ export default function OptionChart({ symbol, trades, optionDirection }: OptionC
           body: JSON.stringify({ 
             symbol,
             klType: 2, // Day
-            limit: 500
+            limit: 200
           })
         });
 
@@ -85,6 +85,15 @@ export default function OptionChart({ symbol, trades, optionDirection }: OptionC
       chartRef.current.remove();
     }
 
+    const getChartDimensions = () => {
+      const container = chartContainerRef.current;
+      if (!container) return { width: 0, height: 0 };
+      const rect = container.getBoundingClientRect();
+      return { width: Math.floor(rect.width), height: Math.floor(rect.height) };
+    };
+
+    const { width, height } = getChartDimensions();
+
     const chart = createChart(chartContainerRef.current, {
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
@@ -94,8 +103,8 @@ export default function OptionChart({ symbol, trades, optionDirection }: OptionC
         vertLines: { color: '#E5E7EB' }, // border.subtle
         horzLines: { color: '#E5E7EB' },
       },
-      width: chartContainerRef.current.clientWidth,
-      height: 400,
+      width,
+      height: height > 0 ? height : 320,
       timeScale: {
         timeVisible: true,
         secondsVisible: false,
@@ -210,17 +219,16 @@ export default function OptionChart({ symbol, trades, optionDirection }: OptionC
       chart.timeScale().fitContent();
     }
 
-    // Handle resize
-    const handleResize = () => {
-      if (chartContainerRef.current && chartRef.current) {
-        chartRef.current.applyOptions({ width: chartContainerRef.current.clientWidth });
-      }
-    };
+    const resizeObserver = new ResizeObserver(() => {
+      const { width: nextWidth, height: nextHeight } = getChartDimensions();
+      if (!chartRef.current || nextWidth <= 0 || nextHeight <= 0) return;
+      chartRef.current.applyOptions({ width: nextWidth, height: nextHeight });
+    });
 
-    window.addEventListener('resize', handleResize);
+    resizeObserver.observe(chartContainerRef.current);
 
     return () => {
-      window.removeEventListener('resize', handleResize);
+      resizeObserver.disconnect();
       seriesMarkers.detach();
       if (chartRef.current) {
         chartRef.current.remove();
@@ -259,9 +267,14 @@ export default function OptionChart({ symbol, trades, optionDirection }: OptionC
       borderColor="border.default" 
       p={4}
       position="relative"
+      overflow="hidden"
+      display="flex"
+      flexDirection="column"
     >
-       <Text fontWeight="bold" mb={2} color="fg.default">{symbol} Chart</Text>
-      <div ref={chartContainerRef} style={{ width: '100%', height: '100%' }} />
+      <Text fontWeight="bold" mb={2} color="fg.default">{symbol} Chart</Text>
+      <Box flex="1" minH={0} w="100%">
+        <div ref={chartContainerRef} style={{ width: '100%', height: '100%' }} />
+      </Box>
     </Box>
   );
 }
